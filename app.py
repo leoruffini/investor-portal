@@ -35,117 +35,259 @@ st.set_page_config(
 # ── CSS ──────────────────────────────────────────────────────────────────────
 
 st.markdown("""
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
     /* ── Provalix Brand Tokens ──
        Navy:  #233348  (logo PROVALIX, header bg, primary buttons, dark text)
        Teal:  #3ABFC2  (logo HOMES, active accents, subtle highlights)
-       Light: #f5f5f5  (page bg)
+       Light: #f8f9fb  (page bg)
     */
 
-    .block-container { padding-top: 0; padding-bottom: 2rem; max-width: 860px; }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-dot {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(58, 191, 194, 0.45); }
+        50%      { box-shadow: 0 0 0 8px rgba(58, 191, 194, 0); }
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ── Global typography ── */
+    html, body, .stApp, .stMarkdown, .stTextInput label, .stTextArea label,
+    .stNumberInput label, .stSelectbox label, .stFileUploader label,
+    .stButton > button, .stFormSubmitButton > button,
+    [data-testid="stFileUploader"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+    .font-display {
+        font-family: 'Playfair Display', Georgia, serif !important;
+    }
+
+    .block-container {
+        padding-top: 0; padding-bottom: 2rem; max-width: 860px;
+        animation: fadeInUp 0.5s ease-out;
+    }
 
     /* ── Dark navy header bar — full bleed ── */
     .brand-bar {
-        background: #233348;
+        background: linear-gradient(135deg, #1a2738 0%, #233348 50%, #2a3f5a 100%);
         margin: -1rem calc(-50vw + 50%) 0 calc(-50vw + 50%);
-        padding: 1rem calc(50vw - 50% + 2rem);
+        padding: 1.25rem calc(50vw - 50% + 2rem);
         display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 1.5rem;
+        margin-bottom: 0;
+        box-shadow: 0 2px 12px rgba(35, 51, 72, 0.15);
     }
     .brand-bar svg { height: 28px; width: auto; }
     .brand-tag {
         font-size: 0.68rem; font-weight: 500; color: #3ABFC2;
-        text-transform: uppercase; letter-spacing: 0.1em;
-        border: 1px solid rgba(58, 191, 194, 0.4);
-        padding: 0.3rem 0.75rem;
+        text-transform: uppercase; letter-spacing: 0.12em;
+        border: 1px solid rgba(58, 191, 194, 0.35);
+        padding: 0.35rem 0.85rem;
+        border-radius: 4px;
+        backdrop-filter: blur(4px);
     }
-    .app-subtitle {
-        color: #6b7280; font-size: 0.9rem; line-height: 1.55;
-        margin-top: 0; margin-bottom: 1.5rem;
+
+    /* ── Hero / subtitle ── */
+    .hero-section {
+        background: linear-gradient(180deg, rgba(35,51,72,0.04) 0%, transparent 100%);
+        margin: 0 calc(-50vw + 50%);
+        padding: 2rem calc(50vw - 50% + 2rem) 1.5rem;
+    }
+    .hero-title {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 1.75rem; font-weight: 600; color: #233348;
+        margin: 0 0 0.5rem 0; line-height: 1.3;
+    }
+    .hero-subtitle {
+        color: #6b7280; font-size: 0.92rem; line-height: 1.6;
+        margin: 0;
+    }
+
+    /* ── Process overview cards ── */
+    .process-cards {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 1rem; margin: 1.5rem 0 2rem 0;
+    }
+    .process-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+    .process-card:hover {
+        border-color: #3ABFC2;
+        box-shadow: 0 4px 12px rgba(58, 191, 194, 0.1);
+        transform: translateY(-2px);
+    }
+    .process-card-icon {
+        width: 48px; height: 48px;
+        background: linear-gradient(135deg, #eef8f9, #d4f1f2);
+        border-radius: 12px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1.3rem;
+        margin-bottom: 0.75rem;
+    }
+    .process-card-title {
+        font-size: 0.82rem; font-weight: 600; color: #233348;
+        margin-bottom: 0.3rem;
+    }
+    .process-card-desc {
+        font-size: 0.75rem; color: #9ca3af; line-height: 1.4;
     }
 
     /* ── Step bar ── */
-    .step-bar { display: flex; gap: 0; margin-bottom: 2rem; }
-    .step-item {
-        flex: 1; text-align: center; padding: 0.7rem 0.25rem;
-        border-bottom: 3px solid #e5e7eb; color: #9ca3af;
-        font-size: 0.78rem; font-weight: 500; transition: all 0.2s;
+    .step-bar {
+        display: flex; gap: 0; margin-bottom: 2rem;
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    .step-item.active { border-bottom-color: #3ABFC2; color: #233348; font-weight: 600; }
-    .step-item.done   { border-bottom-color: #233348; color: #233348; }
+    .step-item {
+        flex: 1; text-align: center; padding: 0.75rem 0.25rem;
+        border-bottom: 3px solid transparent; color: #9ca3af;
+        font-size: 0.78rem; font-weight: 500; transition: all 0.3s ease;
+        background: transparent;
+    }
+    .step-item.active {
+        border-bottom-color: #3ABFC2; color: #233348; font-weight: 600;
+        background: rgba(58, 191, 194, 0.04);
+    }
+    .step-item.done {
+        border-bottom-color: #233348; color: #233348;
+        background: rgba(35, 51, 72, 0.03);
+    }
     .step-num {
         display: inline-flex; align-items: center; justify-content: center;
-        width: 1.35rem; height: 1.35rem;
+        width: 1.4rem; height: 1.4rem;
         background: #e5e7eb; color: #6b7280;
-        font-size: 0.7rem; font-weight: 700; margin-right: 0.35rem;
+        font-size: 0.7rem; font-weight: 700; margin-right: 0.4rem;
         vertical-align: middle;
+        border-radius: 50%;
+        transition: all 0.3s ease;
     }
-    .step-item.active .step-num { background: #3ABFC2; color: white; }
-    .step-item.done   .step-num { background: #233348; color: white; }
+    .step-item.active .step-num {
+        background: #3ABFC2; color: white;
+        box-shadow: 0 2px 8px rgba(58, 191, 194, 0.3);
+    }
+    .step-item.done .step-num { background: #233348; color: white; }
 
     /* ── Section headers ── */
     .section-title {
-        font-size: 1.05rem; font-weight: 600; color: #233348; margin-bottom: 0.1rem;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 1.3rem; font-weight: 600; color: #233348;
+        margin-bottom: 0.25rem;
     }
     .section-desc {
-        font-size: 0.82rem; color: #9ca3af; margin-bottom: 1rem;
+        font-size: 0.85rem; color: #6b7280; margin-bottom: 1.25rem;
+        line-height: 1.5;
     }
 
     /* ── Upload area ── */
     [data-testid="stFileUploader"] {
-        border: 2px dashed #d1d5db !important; border-radius: 0 !important;
-        padding: 0.5rem !important; background: #fafafa !important;
+        border: 2px dashed #d1d5db !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        background: #fafbfc !important;
+        transition: all 0.2s ease !important;
     }
-    [data-testid="stFileUploader"]:hover { border-color: #3ABFC2 !important; }
+    [data-testid="stFileUploader"]:hover {
+        border-color: #3ABFC2 !important;
+        background: rgba(58, 191, 194, 0.03) !important;
+    }
 
-    /* ── Buttons — dark navy primary, sharp corners ── */
+    /* ── Recommended docs cards ── */
+    .rec-docs {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 0.6rem; margin: 1rem 0 1.5rem 0;
+    }
+    .rec-doc {
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.7rem 0.9rem;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 0.82rem; color: #374151;
+        transition: all 0.15s ease;
+    }
+    .rec-doc:hover {
+        border-color: #3ABFC2;
+        background: #f0fafb;
+    }
+    .rec-doc-icon {
+        width: 32px; height: 32px;
+        background: #f3f4f6;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem; flex-shrink: 0;
+    }
+
+    /* ── Buttons — rounded, polished ── */
     .stButton > button[kind="primary"],
     .stFormSubmitButton > button[kind="primary"] {
-        background-color: #233348 !important;
+        background: linear-gradient(135deg, #233348 0%, #2d4562 100%) !important;
         border-color: #233348 !important;
         color: white !important;
-        border-radius: 0 !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
-        letter-spacing: 0.04em !important;
+        letter-spacing: 0.03em !important;
         text-transform: uppercase !important;
         font-size: 0.82rem !important;
-        padding: 0.65rem 1.5rem !important;
-        transition: all 0.15s !important;
+        padding: 0.7rem 1.5rem !important;
+        transition: all 0.25s ease !important;
+        box-shadow: 0 2px 8px rgba(35, 51, 72, 0.2) !important;
     }
     .stButton > button[kind="primary"]:hover,
     .stFormSubmitButton > button[kind="primary"]:hover {
-        background-color: #ffffff !important;
-        color: #233348 !important;
-        border-color: #233348 !important;
+        background: linear-gradient(135deg, #2d4562 0%, #3a5a7a 100%) !important;
+        box-shadow: 0 4px 16px rgba(35, 51, 72, 0.3) !important;
+        transform: translateY(-1px) !important;
     }
     .stButton > button[kind="secondary"] {
-        border-radius: 0 !important;
-        border-color: #233348 !important;
-        color: #233348 !important;
-        font-weight: 600 !important;
-        text-transform: uppercase !important;
+        border-radius: 8px !important;
+        border-color: #d1d5db !important;
+        color: #374151 !important;
+        font-weight: 500 !important;
         font-size: 0.82rem !important;
-        letter-spacing: 0.04em !important;
+        transition: all 0.2s ease !important;
     }
     .stButton > button[kind="secondary"]:hover {
-        background-color: #233348 !important;
-        color: white !important;
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
     }
     div[data-testid="stDownloadButton"] > button {
-        width: 100%; border-radius: 0 !important;
-        border-color: #233348 !important; color: #233348 !important;
+        width: 100%; border-radius: 8px !important;
+        border: 1.5px solid #233348 !important; color: #233348 !important;
         font-weight: 600 !important; text-transform: uppercase !important;
-        font-size: 0.8rem !important; letter-spacing: 0.04em !important;
+        font-size: 0.8rem !important; letter-spacing: 0.03em !important;
+        padding: 0.7rem 1.5rem !important;
+        transition: all 0.2s ease !important;
     }
     div[data-testid="stDownloadButton"] > button:hover {
         background-color: #233348 !important; color: white !important;
     }
 
     /* ── Tabs — teal underline accent ── */
-    .stTabs [data-baseweb="tab-list"] { gap: 0; }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0;
+        background: white;
+        border-radius: 10px 10px 0 0;
+        border: 1px solid #e5e7eb;
+        border-bottom: none;
+        padding: 0 0.5rem;
+    }
     .stTabs [data-baseweb="tab"] {
-        font-size: 0.82rem !important; font-weight: 500 !important;
-        color: #6b7280 !important; padding: 0.6rem 1rem !important;
+        font-size: 0.8rem !important; font-weight: 500 !important;
+        color: #6b7280 !important; padding: 0.7rem 0.9rem !important;
+        transition: color 0.2s ease !important;
     }
     .stTabs [aria-selected="true"] {
         color: #233348 !important; font-weight: 600 !important;
@@ -154,36 +296,126 @@ st.markdown("""
     .stTabs [data-baseweb="tab-highlight"] {
         background-color: #3ABFC2 !important;
     }
+    .stTabs [data-baseweb="tab-panel"] {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        padding: 1.5rem;
+    }
+
+    /* ── Auto-extracted badge ── */
+    .extracted-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        font-size: 0.68rem; font-weight: 500;
+        color: #3ABFC2;
+        background: #eef8f9;
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        margin-left: 0.4rem;
+        vertical-align: middle;
+    }
+
+    /* ── Processing steps (vertical) ── */
+    .proc-steps { margin: 2rem 0; }
+    .proc-step {
+        display: flex; align-items: flex-start; gap: 1rem;
+        padding: 0.9rem 0; position: relative;
+    }
+    .proc-step:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 15px; top: 42px; bottom: 0;
+        width: 2px;
+        background: #e5e7eb;
+    }
+    .proc-step.done:not(:last-child)::after { background: #233348; }
+    .proc-step.active:not(:last-child)::after { background: linear-gradient(180deg, #3ABFC2 0%, #e5e7eb 100%); }
+    .proc-dot {
+        width: 32px; height: 32px; flex-shrink: 0;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.75rem; font-weight: 700;
+        background: #f3f4f6; color: #9ca3af;
+        transition: all 0.3s ease;
+        position: relative; z-index: 1;
+    }
+    .proc-step.active .proc-dot {
+        background: #3ABFC2; color: white;
+        animation: pulse-dot 2s infinite;
+    }
+    .proc-step.done .proc-dot { background: #233348; color: white; }
+    .proc-label {
+        font-size: 0.88rem; font-weight: 500; color: #9ca3af;
+        padding-top: 0.35rem;
+    }
+    .proc-step.active .proc-label { color: #233348; font-weight: 600; }
+    .proc-step.done .proc-label { color: #233348; }
 
     /* ── Result cards ── */
     .result-grid {
         display: grid; grid-template-columns: 1fr 1fr;
-        gap: 1rem; margin-bottom: 1.25rem;
+        gap: 1rem; margin-bottom: 1.5rem;
     }
     .result-card {
-        background: #fafafa; border: 1px solid #e5e7eb;
-        border-radius: 0; padding: 1rem 1.25rem;
+        background: white; border: 1px solid #e5e7eb;
+        border-radius: 12px; padding: 1.25rem 1.5rem;
+        transition: all 0.2s ease;
     }
+    .result-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
     .result-card.highlight {
-        background: #eef8f9; border-color: #3ABFC2; border-left: 4px solid #3ABFC2;
+        background: linear-gradient(135deg, #eef8f9 0%, #e0f5f6 100%);
+        border-color: #3ABFC2;
+        border-left: 4px solid #3ABFC2;
     }
     .result-label {
         font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 0.25rem;
+        letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 0.35rem;
     }
     .result-value {
         font-size: 1rem; font-weight: 600; color: #233348; word-break: break-word;
     }
 
-    /* ── Success banner ── */
-    .success-banner {
-        background: #eef8f9; border-left: 4px solid #3ABFC2;
-        border-radius: 0; padding: 1.25rem 1.5rem;
-        display: flex; align-items: center; gap: 0.75rem;
-        margin-bottom: 1.5rem;
+    /* ── Success section (Step 4) ── */
+    .success-section {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        animation: fadeInUp 0.6s ease-out;
     }
-    .success-icon { font-size: 1.5rem; flex-shrink: 0; }
-    .success-text { font-size: 0.92rem; color: #233348; font-weight: 500; }
+    .success-icon-big {
+        width: 80px; height: 80px;
+        background: linear-gradient(135deg, #d4f1f2, #eef8f9);
+        border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 2.2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 8px 24px rgba(58, 191, 194, 0.15);
+    }
+    .success-heading {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 1.6rem; font-weight: 600; color: #233348;
+        margin-bottom: 0.5rem;
+    }
+    .success-subtext {
+        color: #6b7280; font-size: 0.92rem; line-height: 1.5;
+        margin-bottom: 2rem;
+        max-width: 420px; margin-left: auto; margin-right: auto;
+    }
+
+    /* ── Security note ── */
+    .security-note {
+        display: flex; align-items: center; gap: 0.6rem;
+        background: #f8f9fb; border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-top: 1.5rem;
+    }
+    .security-note-icon {
+        font-size: 1.1rem; flex-shrink: 0; color: #3ABFC2;
+    }
+    .security-note-text {
+        font-size: 0.78rem; color: #6b7280; line-height: 1.4;
+    }
 
     /* ── Misc ── */
     .divider-subtle { border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
@@ -192,15 +424,107 @@ st.markdown("""
         margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;
     }
     .doc-list-item {
-        padding: 0.45rem 0.75rem; background: #f3f4f6; border-left: 3px solid #3ABFC2;
-        font-size: 0.85rem; color: #233348; margin-bottom: 0.35rem;
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.6rem 0.9rem;
+        background: white; border: 1px solid #e5e7eb; border-radius: 8px;
+        font-size: 0.85rem; color: #233348; margin-bottom: 0.5rem;
+        transition: all 0.15s ease;
     }
+    .doc-list-item:hover { border-color: #3ABFC2; }
 
-    /* ── Input fields — sharp ── */
+    /* ── Input fields — rounded ── */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stNumberInput > div > div > input {
-        border-radius: 0 !important;
+        border-radius: 8px !important;
+        transition: border-color 0.2s ease !important;
+    }
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus,
+    .stNumberInput > div > div > input:focus {
+        border-color: #3ABFC2 !important;
+        box-shadow: 0 0 0 2px rgba(58, 191, 194, 0.15) !important;
+    }
+
+    /* ── Form container ── */
+    [data-testid="stForm"] {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    /* ── Page background ── */
+    .stApp {
+        background-color: #f8f9fb !important;
+    }
+
+    /* ── Style Streamlit info/warning/error/success alerts ── */
+    [data-testid="stAlert"] {
+        border-radius: 8px !important;
+        font-size: 0.85rem !important;
+    }
+    /* Info alert — match teal palette */
+    div[data-testid="stAlert"][data-baseweb="notification"][kind="info"],
+    .stAlert > div[role="alert"] {
+        background-color: #eef8f9 !important;
+        border-left-color: #3ABFC2 !important;
+        color: #233348 !important;
+    }
+
+    /* ── Status widget — rounded ── */
+    [data-testid="stStatusWidget"] {
+        border-radius: 10px !important;
+    }
+
+    /* ── Mobile responsiveness ── */
+    @media (max-width: 640px) {
+        .brand-bar {
+            padding: 0.75rem 1rem !important;
+        }
+        .brand-bar svg {
+            height: 20px !important;
+        }
+        .brand-tag {
+            font-size: 0.55rem !important;
+            padding: 0.25rem 0.5rem !important;
+            letter-spacing: 0.08em !important;
+            white-space: nowrap !important;
+        }
+        .hero-section {
+            padding: 1.25rem 1rem 1rem !important;
+        }
+        .hero-title {
+            font-size: 1.4rem !important;
+        }
+        .hero-subtitle {
+            font-size: 0.82rem !important;
+        }
+        .process-cards {
+            grid-template-columns: 1fr !important;
+        }
+        .rec-docs {
+            grid-template-columns: 1fr !important;
+        }
+        .result-grid {
+            grid-template-columns: 1fr !important;
+        }
+        .step-bar {
+            border-radius: 8px !important;
+        }
+        .step-item {
+            font-size: 0 !important;
+            padding: 0.7rem 0.15rem !important;
+            display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+        }
+        .step-num {
+            width: 1.6rem !important; height: 1.6rem !important;
+            font-size: 0.7rem !important;
+            margin-right: 0 !important;
+        }
+        .step-label {
+            font-size: 0.6rem !important;
+            display: block;
+        }
     }
 
     footer { visibility: hidden; }
@@ -249,17 +573,20 @@ st.markdown("""
     </svg>
     <div class="brand-tag">Portal del Inversor</div>
 </div>
-<p class="app-subtitle">
-    Registro de datos societarios para el proceso de inversión.
-    Suba sus documentos legales y revise la información extraída.
-</p>
+<div class="hero-section">
+    <div class="hero-title">Registro de datos societarios</div>
+    <p class="hero-subtitle">
+        Suba sus documentos legales y revise la informaci&oacute;n extra&iacute;da
+        de forma autom&aacute;tica para completar el proceso de inversi&oacute;n.
+    </p>
+</div>
 """, unsafe_allow_html=True)
 
 
 # ── Step bar ─────────────────────────────────────────────────────────────────
 
 step = st.session_state.step
-labels = ["Documentos", "Procesamiento", "Revisión de datos", "Confirmación"]
+labels = ["Documentos", "Procesamiento", "Revisión", "Confirmación"]
 
 def _cls(i):
     if i + 1 < step:
@@ -273,7 +600,7 @@ st.markdown(
     + "".join(
         f'<div class="step-item {_cls(i)}">'
         f'<span class="step-num">{"&#10003;" if _cls(i) == "done" else i + 1}</span>'
-        f'{lbl}</div>'
+        f'<span class="step-label">{lbl}</span></div>'
         for i, lbl in enumerate(labels)
     )
     + '</div>',
@@ -286,21 +613,56 @@ st.markdown(
 # ══════════════════════════════════════════════════════════════════════════════
 
 if step == 1:
+    # Process overview cards
     st.markdown("""
-    <div class="section-title">Documentación del inversor</div>
+    <div class="process-cards">
+        <div class="process-card">
+            <div class="process-card-icon">&#128196;</div>
+            <div class="process-card-title">1. Suba documentos</div>
+            <div class="process-card-desc">Escrituras, poderes y documentos societarios en PDF</div>
+        </div>
+        <div class="process-card">
+            <div class="process-card-icon">&#9881;</div>
+            <div class="process-card-title">2. Extracci&oacute;n autom&aacute;tica</div>
+            <div class="process-card-desc">IA analiza y extrae datos clave de cada documento</div>
+        </div>
+        <div class="process-card">
+            <div class="process-card-icon">&#9989;</div>
+            <div class="process-card-title">3. Revise y confirme</div>
+            <div class="process-card-desc">Verifique la informaci&oacute;n y complete los campos que falten</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="section-title">Documentaci&oacute;n del inversor</div>
     <div class="section-desc">
         Suba los documentos legales de la sociedad inversora en formato PDF.
         Puede subir varios archivos a la vez.
     </div>
     """, unsafe_allow_html=True)
 
+    # Recommended documents as styled cards
     st.markdown("""
-    **Documentos habituales:**
-    - Escritura de constitución de la sociedad
-    - Nombramiento del órgano de administración
-    - Poderes del representante legal
-    - Ampliaciones de capital (si aplica)
-    """)
+    <div class="rec-docs">
+        <div class="rec-doc">
+            <div class="rec-doc-icon">&#128221;</div>
+            <span>Escritura de constituci&oacute;n</span>
+        </div>
+        <div class="rec-doc">
+            <div class="rec-doc-icon">&#128100;</div>
+            <span>Nombramiento del &oacute;rgano</span>
+        </div>
+        <div class="rec-doc">
+            <div class="rec-doc-icon">&#128274;</div>
+            <span>Poderes del representante</span>
+        </div>
+        <div class="rec-doc">
+            <div class="rec-doc-icon">&#128200;</div>
+            <span>Ampliaciones de capital</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     uploaded = st.file_uploader(
         "Arrastra aquí los PDFs",
@@ -312,7 +674,7 @@ if step == 1:
     if uploaded:
         for f in uploaded:
             st.markdown(
-                f'<div class="doc-list-item">📄 {f.name}</div>',
+                f'<div class="doc-list-item">&#128196; {f.name}</div>',
                 unsafe_allow_html=True,
             )
 
@@ -333,12 +695,14 @@ if step == 1:
     if not uploaded:
         st.info("Suba al menos un documento PDF para continuar.")
 
-    st.markdown(
-        '<p class="footer-note">'
-        'Sus documentos se procesan de forma segura y no se almacenan en ningún servidor externo.'
-        '</p>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("""
+    <div class="security-note">
+        <div class="security-note-icon">&#128274;</div>
+        <div class="security-note-text">
+            Sus documentos se procesan de forma segura y no se almacenan en ning&uacute;n servidor externo.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -815,17 +1179,19 @@ elif step == 4:
     ds = kyc_data.get("datos_societarios", {})
     rl = kyc_data.get("representante_legal_firmante", {})
 
+    # Centered success section
     st.markdown("""
-    <div class="success-banner">
-        <div class="success-icon">&#9989;</div>
-        <div class="success-text">
+    <div class="success-section">
+        <div class="success-icon-big">&#10003;</div>
+        <div class="success-heading">Registro completado</div>
+        <div class="success-subtext">
             Sus datos han sido registrados correctamente.
             Gracias por completar el proceso de registro.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Summary
+    # Summary cards
     st.markdown(f"""
     <div class="result-grid">
         <div class="result-card highlight" style="grid-column: 1 / -1;">
