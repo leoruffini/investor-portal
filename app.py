@@ -732,12 +732,9 @@ elif step == 3:
             s.strip() for s in denom_ant_str.split(",") if s.strip()
         ] if denom_ant_str else []
 
-        # Get cargos from data_editor
-        cargos_edited = st.session_state.get("f_cargos_editor")
-        if isinstance(cargos_edited, pd.DataFrame):
-            cargos_list = cargos_edited.dropna(how="all").to_dict("records")
-        else:
-            cargos_list = []
+        # Get cargos from data_editor return value (not session state key,
+        # which in Streamlit ≥1.23 holds the edit-state dict, not the DataFrame)
+        cargos_list = f_cargos_df.dropna(how="all").to_dict("records")
 
         kyc_data = {
             "datos_societarios": {
