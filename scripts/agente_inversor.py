@@ -144,12 +144,20 @@ def extraer_texto_pdf(pdf_path: Path) -> str:
 
     # Fallback a OCR si PyMuPDF no extrajo texto (PDF escaneado)
     if HAS_OCR:
+        from pdf2image import pdfinfo_from_path
         print(f"  [OCR] Usando OCR para {pdf_path.name}...")
-        images = convert_from_path(str(pdf_path), dpi=300)
+        info = pdfinfo_from_path(str(pdf_path))
+        num_pages = info.get("Pages", 0)
         text_parts = []
-        for i, img in enumerate(images):
-            text = pytesseract.image_to_string(img, lang="spa")
+        # Process one page at a time to avoid loading all images into RAM
+        for page_num in range(1, num_pages + 1):
+            images = convert_from_path(
+                str(pdf_path), dpi=300,
+                first_page=page_num, last_page=page_num,
+            )
+            text = pytesseract.image_to_string(images[0], lang="spa")
             text_parts.append(text)
+            del images  # free memory immediately
         return "\n".join(text_parts)
 
     print(f"  [WARN] No se pudo extraer texto de {pdf_path.name}. Instala PyMuPDF o pytesseract+pdf2image.")
