@@ -128,40 +128,53 @@ TEXTO DE LOS DOCUMENTOS:
 
 
 def extraer_texto_pdf(pdf_path: Path) -> str:
-    """Extrae texto de un PDF. Intenta PyMuPDF primero, OCR como fallback."""
+    """Extrae texto de un PDF. Usa PyMuPDF página a página, OCR solo para páginas escaneadas."""
+    import gc
+
+    text_parts = []
+    num_pages = 0
+
+    # Obtener número de páginas
     if fitz:
         doc = fitz.open(str(pdf_path))
-        text_parts = []
-        for page in doc:
-            text = page.get_text()
-            if text.strip():
-                text_parts.append(text)
+        num_pages = len(doc)
         doc.close()
-        full_text = "\n".join(text_parts)
-        # Si hay texto sustancial, usarlo
-        if len(full_text.strip()) > 200:
-            return full_text
-
-    # Fallback a OCR si PyMuPDF no extrajo texto (PDF escaneado)
-    if HAS_OCR:
+    elif HAS_OCR:
         from pdf2image import pdfinfo_from_path
-        print(f"  [OCR] Usando OCR para {pdf_path.name}...")
         info = pdfinfo_from_path(str(pdf_path))
         num_pages = info.get("Pages", 0)
-        text_parts = []
-        # Process one page at a time to avoid loading all images into RAM
-        for page_num in range(1, num_pages + 1):
-            images = convert_from_path(
-                str(pdf_path), dpi=300,
-                first_page=page_num, last_page=page_num,
-            )
-            text = pytesseract.image_to_string(images[0], lang="spa")
-            text_parts.append(text)
-            del images  # free memory immediately
-        return "\n".join(text_parts)
 
-    print(f"  [WARN] No se pudo extraer texto de {pdf_path.name}. Instala PyMuPDF o pytesseract+pdf2image.")
-    return ""
+    if num_pages == 0:
+        print(f"  [WARN] No se pudo leer {pdf_path.name}. Instala PyMuPDF o pytesseract+pdf2image.")
+        return ""
+
+    print(f"  Procesando {pdf_path.name} ({num_pages} páginas)...")
+
+    for page_num in range(num_pages):
+        page_text = ""
+
+        # 1) Intentar extraer texto directo con PyMuPDF (rápido, sin RAM extra)
+        if fitz:
+            doc = fitz.open(str(pdf_path))
+            page = doc[page_num]
+            page_text = page.get_text()
+            doc.close()
+
+        # 2) Si la página no tiene texto sustancial, usar OCR solo para esa página
+        if len(page_text.strip()) < 50 and HAS_OCR:
+            print(f"    [OCR] Página {page_num + 1}/{num_pages} (escaneada)...")
+            images = convert_from_path(
+                str(pdf_path), dpi=200, grayscale=True,
+                first_page=page_num + 1, last_page=page_num + 1,
+            )
+            page_text = pytesseract.image_to_string(images[0], lang="spa")
+            del images
+            gc.collect()
+
+        if page_text.strip():
+            text_parts.append(page_text)
+
+    return "\n".join(text_parts)
 
 
 def buscar_pdfs(carpeta: Path) -> list[Path]:
