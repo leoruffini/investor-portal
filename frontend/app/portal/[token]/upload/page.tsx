@@ -10,6 +10,19 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { uploadDocs } from "@/lib/api";
 
+const PROCESS_CARDS = [
+  { icon: "📄", title: "1. Suba documentos", desc: "Escrituras, poderes y documentos societarios en PDF" },
+  { icon: "⚙", title: "2. Extracción automática", desc: "IA analiza y extrae datos clave de cada documento" },
+  { icon: "✅", title: "3. Revise y confirme", desc: "Verifique la información y complete los campos que falten" },
+];
+
+const RECOMMENDED_DOCS = [
+  { icon: "📝", label: "Escritura de constitución" },
+  { icon: "👤", label: "Nombramiento del órgano" },
+  { icon: "🔒", label: "Poderes del representante" },
+  { icon: "📈", label: "Ampliaciones de capital" },
+];
+
 export default function UploadPage() {
   const { investor, loading, error: ctxError, refresh } = useInvestor();
   const router = useRouter();
@@ -67,48 +80,91 @@ export default function UploadPage() {
     <>
       <StepIndicator currentStep="upload" />
 
-      <div className="space-y-6">
-        <div>
-          <h2 className="font-heading text-2xl font-bold text-navy">
-            Subir documentos
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Suba los documentos corporativos de{" "}
-            <span className="font-medium text-navy">{investor.name}</span>:
-            escritura de constitución, nombramiento de cargos y poderes de
-            representación.
-          </p>
-        </div>
-
-        <FileDropzone
-          onFilesSelected={handleFilesSelected}
-          disabled={uploading}
-        />
-
-        <FileList files={files} onRemove={handleRemove} />
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="flex justify-end">
-          <Button
-            onClick={handleUpload}
-            disabled={files.length === 0 || uploading}
-            className="bg-navy hover:bg-navy/90"
+      {/* Process overview cards */}
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {PROCESS_CARDS.map((card) => (
+          <div
+            key={card.title}
+            className="rounded-xl border border-gray-200 bg-white p-5 text-center transition-all hover:-translate-y-0.5 hover:border-teal hover:shadow-[0_4px_12px_rgba(58,191,194,0.1)]"
           >
-            {uploading ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Procesando...
-              </>
-            ) : (
-              "Subir y procesar"
-            )}
-          </Button>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#eef8f9] to-[#d4f1f2] text-xl">
+              {card.icon}
+            </div>
+            <div className="text-[0.82rem] font-semibold text-navy">
+              {card.title}
+            </div>
+            <div className="mt-1 text-[0.75rem] leading-snug text-gray-400">
+              {card.desc}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Section header */}
+      <h2 className="font-heading text-[1.3rem] font-semibold text-navy">
+        Documentación del inversor
+      </h2>
+      <p className="mb-4 text-[0.85rem] leading-relaxed text-gray-500">
+        Suba los documentos legales de la sociedad inversora en formato PDF.
+        Puede subir varios archivos a la vez.
+      </p>
+
+      {/* Recommended documents */}
+      <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {RECOMMENDED_DOCS.map((doc) => (
+          <div
+            key={doc.label}
+            className="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-[0.82rem] text-gray-700 transition-all hover:border-teal hover:bg-[#f0fafb]"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-[0.9rem]">
+              {doc.icon}
+            </div>
+            <span>{doc.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Dropzone + file list */}
+      <FileDropzone onFilesSelected={handleFilesSelected} disabled={uploading} />
+      <FileList files={files} onRemove={handleRemove} />
+
+      <hr className="my-5 border-gray-200" />
+
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Submit button */}
+      <Button
+        onClick={handleUpload}
+        disabled={files.length === 0 || uploading}
+        className="w-full rounded-lg bg-gradient-to-br from-navy to-[#2d4562] py-5 text-[0.82rem] font-semibold uppercase tracking-wider shadow-[0_2px_8px_rgba(35,51,72,0.2)] transition-all hover:from-[#2d4562] hover:to-[#3a5a7a] hover:shadow-[0_4px_16px_rgba(35,51,72,0.3)]"
+      >
+        {uploading ? (
+          <span className="flex items-center gap-2">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            Procesando documentos…
+          </span>
+        ) : (
+          "Procesar documentos"
+        )}
+      </Button>
+
+      {files.length === 0 && !uploading && (
+        <div className="mt-4 rounded-lg border border-teal/20 bg-[#eef8f9] px-4 py-3 text-[0.85rem] text-navy">
+          Suba al menos un documento PDF para continuar.
         </div>
+      )}
+
+      {/* Security note */}
+      <div className="mt-5 flex items-center gap-2.5 rounded-lg border border-gray-200 bg-light-bg px-4 py-3">
+        <span className="shrink-0 text-lg text-teal">🔒</span>
+        <span className="text-[0.78rem] leading-snug text-gray-500">
+          Sus documentos se procesan de forma segura y no se almacenan en ningún
+          servidor externo.
+        </span>
       </div>
     </>
   );

@@ -1,8 +1,19 @@
+import re
+import unicodedata
+
 from fastapi import APIRouter, HTTPException, UploadFile
 
 from db import supabase
 from models.schemas import KycData
 from services.extraction import extract_text_from_pdf, extract_with_llm, validate_kyc
+
+
+def _sanitize_filename(name: str) -> str:
+    """Remove accents, replace spaces and special chars for storage keys."""
+    name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    name = re.sub(r"[^\w.\-]", "_", name)
+    name = re.sub(r"_+", "_", name)
+    return name.strip("_")
 
 router = APIRouter(prefix="/kyc", tags=["kyc"])
 
@@ -29,11 +40,12 @@ async def upload_docs(investor_id: str, files: list[UploadFile]):
         pdf_bytes = await file.read()
 
         # Upload to storage + save metadata
-        storage_path = f"{investor_id}/{file.filename}"
+        safe_name = _sanitize_filename(file.filename)
+        storage_path = f"{investor_id}/{safe_name}"
         supabase.storage.from_("documents").upload(
             path=storage_path,
             file=pdf_bytes,
-            file_options={"content-type": "application/pdf"},
+            file_options={"content-type": "application/pdf", "upsert": "true"},
         )
         supabase.table("documents").insert({
             "investor_id": investor_id,

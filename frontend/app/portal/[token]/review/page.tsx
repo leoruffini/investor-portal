@@ -37,13 +37,13 @@ export default function ReviewPage() {
       <>
         <StepIndicator currentStep="review" />
         <div className="py-12 text-center">
-          <p className="text-muted-foreground">
+          <p className="text-gray-500">
             No hay datos extraídos todavía. Por favor, suba sus documentos
             primero.
           </p>
           <Button
             variant="outline"
-            className="mt-4"
+            className="mt-4 rounded-lg"
             onClick={() => router.push(`/portal/${params.token}/upload`)}
           >
             Ir a subir documentos
@@ -73,47 +73,50 @@ export default function ReviewPage() {
     <>
       <StepIndicator currentStep="review" />
 
-      <div className="space-y-6">
-        <div>
-          <h2 className="font-heading text-2xl font-bold text-navy">
-            Revisar datos
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Revise los datos extraídos de sus documentos. Si todo es correcto,
-            confirme para continuar.
-          </p>
-        </div>
+      <h2 className="font-heading text-[1.3rem] font-semibold text-navy">
+        Revisión de datos extraídos
+      </h2>
+      <p className="mb-5 text-[0.85rem] leading-relaxed text-gray-500">
+        Hemos extraído la siguiente información de sus documentos. Revise cada
+        campo, corrija lo que sea necesario y complete los datos que falten.
+      </p>
 
-        <KycReviewForm data={kycData.extracted_json} />
+      <KycReviewForm data={kycData.extracted_json} />
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+      <hr className="my-5 border-gray-200" />
 
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={() => router.push(`/portal/${params.token}/upload`)}
-          >
-            Volver a subir
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={confirming}
-            className="bg-navy hover:bg-navy/90"
-          >
-            {confirming ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Confirmando...
-              </>
-            ) : (
-              "Confirmar datos"
-            )}
-          </Button>
-        </div>
+      <p className="mb-4 text-[0.82rem] text-gray-400">
+        Los campos marcados con * son obligatorios.
+      </p>
+
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/portal/${params.token}/upload`)}
+          className="rounded-lg border-gray-300 text-[0.82rem] font-medium text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+        >
+          Volver a subir
+        </Button>
+        <Button
+          onClick={handleConfirm}
+          disabled={confirming}
+          className="flex-1 rounded-lg bg-gradient-to-br from-navy to-[#2d4562] py-5 text-[0.82rem] font-semibold uppercase tracking-wider shadow-[0_2px_8px_rgba(35,51,72,0.2)] transition-all hover:from-[#2d4562] hover:to-[#3a5a7a] hover:shadow-[0_4px_16px_rgba(35,51,72,0.3)]"
+        >
+          {confirming ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              Confirmando…
+            </span>
+          ) : (
+            "Confirmar y enviar datos"
+          )}
+        </Button>
       </div>
     </>
   );
