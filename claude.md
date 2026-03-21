@@ -6,16 +6,16 @@ Web system to automate KYC data collection from real estate investors. Provalix 
 
 ## Current state
 
-There is a **working Streamlit prototype** (`app.py`, ~1,200 lines) deployed on Render. It does:
-- PDF upload → text extraction (PyMuPDF + OCR) → LLM extraction (Claude/GPT) → review form → JSON → Word
+**Phase 1 (API backend)** and **Phase 2 (investor portal)** are complete and merged to `main`.
+**Phase 3 (backoffice)** is in progress on `feature/backoffice`.
 
-**What it does NOT have** (to be built):
-- Database (everything lives in session_state, lost on browser close)
-- Authentication or roles (no distinction between Provalix admin and investor)
-- Multi-investor flow (no concept of a "promotion" with N investors)
-- Back office for Provalix (tracking each investor's status)
-- Personalized links for each investor to upload their docs
-- Persistent document storage
+What works today:
+- FastAPI backend with Supabase (promotions, investors, documents, KYC data)
+- PDF upload → text extraction (PyMuPDF + OCR) → LLM extraction (Claude/GPT) → review form → protocol generation
+- Investor portal: personalized link (`/portal/{token}`) → upload docs → review extracted data → confirm
+- Backoffice (in progress): admin panel at `/admin` with password protection
+
+Original Streamlit prototype (`app.py`) is kept as reference only.
 
 ## Target architecture
 
@@ -25,16 +25,16 @@ There is a **working Streamlit prototype** (`app.py`, ~1,200 lines) deployed on 
 - Directory: `/backend`
 
 ### Frontend: Next.js + Tailwind CSS + shadcn/ui
-- Two interfaces: investor portal + Provalix back office
+- Two interfaces: investor portal (`/portal/{token}`) + Provalix back office (`/admin`)
 - Connects to FastAPI backend
 - Directory: `/frontend`
 - **Stack**: Next.js (App Router), Tailwind CSS, shadcn/ui for components
-- **Brand tokens** (from existing Streamlit prototype — must be preserved):
+- **Brand tokens** (configured in `tailwind.config.js` as custom colors):
   - Navy: `#233348` (primary, headers, dark text, buttons)
   - Teal: `#3ABFC2` (accents, active states, highlights)
   - Light bg: `#f8f9fb`
   - Fonts: Inter (body), Playfair Display (headings)
-- Configure these in `tailwind.config.js` as custom colors (e.g., `navy`, `teal`)
+- **Backoffice auth**: simple password protection via `ADMIN_PASSWORD` env var, cookie-based session, middleware guard on `/admin/*` routes
 
 ### Database: Supabase
 - PostgreSQL for structured data (promotions, investors, KYC data, statuses)
@@ -75,28 +75,31 @@ kyc_data
 
 ## Development phases
 
-### Phase 1: `feature/api-backend` ← CURRENT
+### Phase 1: `feature/api-backend` ✅ COMPLETE (merged to main)
 Set up FastAPI + Supabase + migrate existing Python logic.
-- Create FastAPI structure in `/backend`
-- Configure Supabase (tables, storage, auth)
-- Migrate `agente_inversor.py` to endpoints: POST /upload-docs, GET /kyc-data/{investor_id}
-- Migrate `rellenar_protocolo.py` to endpoint: POST /generate-protocol/{investor_id}
-- CRUD endpoints: promotions, investors
-- Basic tests with pytest
+- FastAPI structure in `/backend` with routers, services, models
+- Supabase: tables (promotions, investors, documents, kyc_data), storage buckets
+- Endpoints: POST /upload-docs, GET /kyc-data/{investor_id}, POST /generate-protocol/{investor_id}
+- CRUD: promotions, investors
+- Tests with pytest
 
-### Phase 2: `feature/investor-portal`
-React frontend for the investor.
-- Token/magic link access page
-- Document upload
-- Data review form (equivalent to current Streamlit Step 3)
-- Confirmation
+### Phase 2: `feature/investor-portal` ✅ COMPLETE (merged to main)
+Next.js frontend for the investor.
+- Token access page (`/portal/{token}`)
+- Document upload (`/portal/{token}/upload`)
+- Data review form (`/portal/{token}/review`)
+- Confirmation page (`/portal/{token}/complete`)
 
-### Phase 3: `feature/backoffice`
-Provalix admin panel.
-- Create promotion + add investors
-- Per-investor status view (docs uploaded, data confirmed)
-- Generate protocol when all complete
-- Upload docs on behalf of investors (first promotion)
+### Phase 3: `feature/backoffice` ← CURRENT
+Provalix admin panel at `/admin`.
+- **Auth**: password login (`/admin/login`), middleware guard, cookie-based session, `ADMIN_PASSWORD` env var
+- **Dashboard** (`/admin`): promotion cards with investor counts and progress bars
+- **Create promotion** (`/admin/promotions/new`): name + description form
+- **Promotion detail** (`/admin/promotions/[id]`): stats (total/pending/in-progress/complete), investor table with status badges, copy portal link, delete investor
+- **Add investors** (`/admin/promotions/[id]/investors/new`): individual form + CSV bulk import tab
+- **Investor detail** (`/admin/promotions/[id]/investors/[investorId]`): info card, document list with download, upload docs on behalf, KYC review form, trigger protocol generation
+- Shared components: `StatusBadge`, `CopyLinkButton`
+- API helper: `lib/api.ts` extended with promotion/investor/document/protocol functions
 
 ## Repo structure
 
@@ -110,7 +113,27 @@ investor-portal/
 │   ├── models/                  # Pydantic schemas
 │   ├── db.py                    # Supabase connection
 │   └── requirements.txt
-├── frontend/                    # (Phase 2)
+├── frontend/
+│   ├── app/
+│   │   ├── page.tsx             # Landing page
+│   │   ├── portal/[token]/      # Investor portal (Phase 2)
+│   │   │   ├── page.tsx         # Welcome / doc status
+│   │   │   ├── upload/          # Document upload
+│   │   │   ├── review/          # KYC data review
+│   │   │   └── complete/        # Confirmation
+│   │   └── admin/               # Backoffice (Phase 3)
+│   │       ├── login/           # Password login
+│   │       ├── page.tsx         # Dashboard
+│   │       ├── api/auth/        # Login/logout API route
+│   │       └── promotions/
+│   │           ├── new/         # Create promotion
+│   │           └── [id]/        # Promotion detail
+│   │               └── investors/
+│   │                   ├── new/           # Add investors
+│   │                   └── [investorId]/  # Investor detail
+│   ├── components/              # Shared UI (StatusBadge, CopyLinkButton, etc.)
+│   ├── lib/api.ts               # Backend API client
+│   └── middleware.ts            # Auth guard for /admin/*
 ├── scripts/                     # original code (reference)
 │   ├── agente_inversor.py
 │   ├── rellenar_protocolo.py
@@ -131,20 +154,21 @@ investor-portal/
 ## Useful commands
 
 ```bash
-# Current Streamlit prototype
+# Backend
+cd backend
+uvicorn main:app --reload          # runs on :8000
+
+# Frontend
+cd frontend
+npm run dev                        # runs on :3000
+
+# Original Streamlit prototype (reference only)
 source venv/bin/activate
 streamlit run app.py
 
-# Backend (once created)
-cd backend
-uvicorn main:app --reload
-
-# Git: create feature branch
-git checkout -b feature/api-backend
-git push -u origin feature/api-backend
-
-# Git: switch back to main
+# Git
 git checkout main
+git checkout feature/backoffice    # current work branch
 ```
 
 ## Business context

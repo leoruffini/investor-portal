@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from models.schemas import DocType, Document
+import io
 
 from db import supabase
 
@@ -51,3 +53,27 @@ async def list_documents(investor_id: str):
         .execute()
     )
     return result.data
+
+
+@router.get("/{investor_id}/download/{document_id}")
+async def download_document(investor_id: str, document_id: str):
+    result = (
+        supabase.table(TABLE)
+        .select("*")
+        .eq("id", document_id)
+        .eq("investor_id", investor_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+
+    doc = result.data[0]
+    file_bytes = supabase.storage.from_(BUCKET).download(doc["storage_path"])
+
+    return StreamingResponse(
+        io.BytesIO(file_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{doc["filename"]}"'
+        },
+    )
