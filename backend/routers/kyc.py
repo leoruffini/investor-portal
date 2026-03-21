@@ -1,7 +1,9 @@
 import re
 import unicodedata
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from typing import Optional
+
+from fastapi import APIRouter, Body, HTTPException, UploadFile
 
 from db import supabase
 from models.schemas import KycData
@@ -97,11 +99,18 @@ async def get_kyc_data(investor_id: str):
 
 
 @router.patch("/kyc-data/{investor_id}/confirm", response_model=KycData)
-async def confirm_kyc_data(investor_id: str):
-    """Mark KYC data as confirmed by the investor."""
+async def confirm_kyc_data(
+    investor_id: str,
+    extracted_json: Optional[dict] = Body(None),
+):
+    """Mark KYC data as confirmed, optionally updating the extracted JSON with investor edits."""
+    update_payload: dict = {"confirmed": True, "confirmed_at": "now()"}
+    if extracted_json is not None:
+        update_payload["extracted_json"] = extracted_json
+
     result = (
         supabase.table(TABLE)
-        .update({"confirmed": True, "confirmed_at": "now()"})
+        .update(update_payload)
         .eq("investor_id", investor_id)
         .execute()
     )

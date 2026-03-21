@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useInvestor } from "@/context/investor-context";
 import { StepIndicator } from "@/components/step-indicator";
-import { KycReviewForm } from "@/components/kyc-review-form";
+import { KycReviewForm, KycReviewFormHandle } from "@/components/kyc-review-form";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { confirmKycData } from "@/lib/api";
@@ -13,6 +13,7 @@ export default function ReviewPage() {
   const { investor, kycData, loading, error: ctxError, refresh } = useInvestor();
   const router = useRouter();
   const params = useParams<{ token: string }>();
+  const formRef = useRef<KycReviewFormHandle>(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +58,8 @@ export default function ReviewPage() {
     try {
       setConfirming(true);
       setError(null);
-      await confirmKycData(investor.id);
+      const editedData = formRef.current?.getData() ?? kycData.extracted_json;
+      await confirmKycData(investor.id, editedData as Record<string, unknown>);
       await refresh();
       router.push(`/portal/${params.token}/complete`);
     } catch (err) {
@@ -81,7 +83,7 @@ export default function ReviewPage() {
         campo, corrija lo que sea necesario y complete los datos que falten.
       </p>
 
-      <KycReviewForm data={kycData.extracted_json} />
+      <KycReviewForm ref={formRef} data={kycData.extracted_json} />
 
       <hr className="my-5 border-gray-200" />
 

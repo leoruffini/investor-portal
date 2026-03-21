@@ -37,9 +37,14 @@ export async function getKycData(investorId: string): Promise<KycData | null> {
   }
 }
 
-export async function confirmKycData(investorId: string): Promise<KycData> {
+export async function confirmKycData(
+  investorId: string,
+  extractedJson?: Record<string, unknown>
+): Promise<KycData> {
   return apiFetch<KycData>(`/kyc/kyc-data/${investorId}/confirm`, {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(extractedJson ?? null),
   });
 }
 
