@@ -18,7 +18,24 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 # Ensure backend modules are importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from db import supabase as sb  # noqa: E402
 from main import app  # noqa: E402
+
+
+def _tables_exist() -> bool:
+    """Check if the promotions table exists in Supabase."""
+    try:
+        sb.table("promotions").select("id").limit(1).execute()
+        return True
+    except Exception:
+        return False
+
+
+tables_ready = _tables_exist()
+requires_tables = pytest.mark.skipif(
+    not tables_ready,
+    reason="Supabase tables not created yet — run backend/db/init.sql first",
+)
 
 
 @pytest.fixture

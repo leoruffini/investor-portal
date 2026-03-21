@@ -1,6 +1,8 @@
 import pytest
+from tests.conftest import requires_tables
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_create_promotion(client):
     resp = await client.post("/promotions/", json={
@@ -16,6 +18,7 @@ async def test_create_promotion(client):
     await client.delete(f"/promotions/{data['id']}")
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_list_promotions(client, promotion):
     resp = await client.get("/promotions/")
@@ -24,6 +27,7 @@ async def test_list_promotions(client, promotion):
     assert promotion["id"] in ids
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_get_promotion(client, promotion):
     resp = await client.get(f"/promotions/{promotion['id']}")
@@ -31,12 +35,14 @@ async def test_get_promotion(client, promotion):
     assert resp.json()["name"] == "Test Promo"
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_get_promotion_not_found(client):
     resp = await client.get("/promotions/00000000-0000-0000-0000-000000000000")
     assert resp.status_code == 404
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_update_promotion(client, promotion):
     resp = await client.patch(f"/promotions/{promotion['id']}", json={
@@ -46,6 +52,7 @@ async def test_update_promotion(client, promotion):
     assert resp.json()["name"] == "Updated Name"
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_delete_promotion(client):
     # Create then delete

@@ -1,6 +1,8 @@
 import pytest
+from tests.conftest import requires_tables
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_create_investor(client, promotion):
     resp = await client.post("/investors/", json={
@@ -16,6 +18,7 @@ async def test_create_investor(client, promotion):
     assert data["token"] is not None
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_list_investors_by_promotion(client, promotion, investor):
     resp = await client.get("/investors/", params={"promotion_id": promotion["id"]})
@@ -24,6 +27,7 @@ async def test_list_investors_by_promotion(client, promotion, investor):
     assert investor["id"] in ids
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_get_investor(client, investor):
     resp = await client.get(f"/investors/{investor['id']}")
@@ -31,12 +35,14 @@ async def test_get_investor(client, investor):
     assert resp.json()["email"] == "test@example.com"
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_get_investor_not_found(client):
     resp = await client.get("/investors/00000000-0000-0000-0000-000000000000")
     assert resp.status_code == 404
 
 
+@requires_tables
 @pytest.mark.anyio
 async def test_update_investor_status(client, investor):
     resp = await client.patch(f"/investors/{investor['id']}", json={
