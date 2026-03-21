@@ -24,10 +24,17 @@ There is a **working Streamlit prototype** (`app.py`, ~1,200 lines) deployed on 
 - REST endpoints for: promotion management, investor CRUD, doc upload/processing, protocol generation
 - Directory: `/backend`
 
-### Frontend: React (Next.js or Vite)
+### Frontend: Next.js + Tailwind CSS + shadcn/ui
 - Two interfaces: investor portal + Provalix back office
 - Connects to FastAPI backend
 - Directory: `/frontend`
+- **Stack**: Next.js (App Router), Tailwind CSS, shadcn/ui for components
+- **Brand tokens** (from existing Streamlit prototype — must be preserved):
+  - Navy: `#233348` (primary, headers, dark text, buttons)
+  - Teal: `#3ABFC2` (accents, active states, highlights)
+  - Light bg: `#f8f9fb`
+  - Fonts: Inter (body), Playfair Display (headings)
+- Configure these in `tailwind.config.js` as custom colors (e.g., `navy`, `teal`)
 
 ### Database: Supabase
 - PostgreSQL for structured data (promotions, investors, KYC data, statuses)
