@@ -1,0 +1,59 @@
+from fastapi import APIRouter, HTTPException
+
+from db import supabase
+from models.schemas import Investor, InvestorCreate, InvestorUpdate
+
+router = APIRouter(prefix="/investors", tags=["investors"])
+
+TABLE = "investors"
+
+
+@router.get("/", response_model=list[Investor])
+async def list_investors(
+    promotion_id: str | None = None,
+    token: str | None = None,
+):
+    query = supabase.table(TABLE).select("*").order("created_at", desc=True)
+    if promotion_id:
+        query = query.eq("promotion_id", promotion_id)
+    if token:
+        query = query.eq("token", token)
+    result = query.execute()
+    return result.data
+
+
+@router.get("/{investor_id}", response_model=Investor)
+async def get_investor(investor_id: str):
+    result = supabase.table(TABLE).select("*").eq("id", investor_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Inversor no encontrado")
+    return result.data[0]
+
+
+@router.post("/", response_model=Investor, status_code=201)
+async def create_investor(payload: InvestorCreate):
+    result = supabase.table(TABLE).insert(payload.model_dump()).execute()
+    return result.data[0]
+
+
+@router.patch("/{investor_id}", response_model=Investor)
+async def update_investor(investor_id: str, payload: InvestorUpdate):
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+    result = (
+        supabase.table(TABLE)
+        .update(updates)
+        .eq("id", investor_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Inversor no encontrado")
+    return result.data[0]
+
+
+@router.delete("/{investor_id}", status_code=204)
+async def delete_investor(investor_id: str):
+    result = supabase.table(TABLE).delete().eq("id", investor_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Inversor no encontrado")
