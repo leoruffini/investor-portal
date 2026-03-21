@@ -1,0 +1,40 @@
+-- Investor Portal — initial schema
+-- Run this in the Supabase SQL Editor
+
+create table promotions (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  description text,
+  created_at  timestamptz not null default now()
+);
+
+create table investors (
+  id                uuid primary key default gen_random_uuid(),
+  promotion_id      uuid not null references promotions(id) on delete cascade,
+  name              text not null,
+  email             text not null,
+  investment_amount numeric,
+  ownership_pct     numeric,
+  status            text not null default 'pending'
+                    check (status in ('pending', 'docs_uploaded', 'data_confirmed', 'complete')),
+  token             text unique default gen_random_uuid()::text,
+  created_at        timestamptz not null default now()
+);
+
+create table documents (
+  id            uuid primary key default gen_random_uuid(),
+  investor_id   uuid not null references investors(id) on delete cascade,
+  filename      text not null,
+  storage_path  text not null,
+  doc_type      text not null default 'otro'
+                check (doc_type in ('escritura_constitucion', 'nombramiento', 'poderes', 'otro')),
+  uploaded_at   timestamptz not null default now()
+);
+
+create table kyc_data (
+  id              uuid primary key default gen_random_uuid(),
+  investor_id     uuid not null references investors(id) on delete cascade,
+  extracted_json  jsonb not null default '{}'::jsonb,
+  confirmed       boolean not null default false,
+  confirmed_at    timestamptz
+);
