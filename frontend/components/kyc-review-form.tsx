@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,15 +20,16 @@ function _g(d: Record<string, unknown> | undefined | null, ...keys: string[]): s
 }
 
 function Field({ label, value, wide }: { label: string; value: string; wide?: boolean }) {
+  const [val, setVal] = useState(value);
   return (
     <div className={wide ? "sm:col-span-2" : ""}>
       <Label className="text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400">
         {label}
       </Label>
       {value.length > 80 || value.includes("\n") ? (
-        <Textarea value={value} readOnly rows={3} className="mt-1 rounded-lg border-gray-200 bg-white focus:border-teal focus:ring-teal/15" />
+        <Textarea value={val} onChange={(e) => setVal(e.target.value)} rows={3} className="mt-1 rounded-lg border-gray-200 bg-white focus:border-teal focus:ring-teal/15" />
       ) : (
-        <Input value={value} readOnly className="mt-1 rounded-lg border-gray-200 bg-white focus:border-teal focus:ring-teal/15" />
+        <Input value={val} onChange={(e) => setVal(e.target.value)} className="mt-1 rounded-lg border-gray-200 bg-white focus:border-teal focus:ring-teal/15" />
       )}
     </div>
   );
@@ -37,6 +39,12 @@ interface KycReviewFormProps {
   data: Record<string, unknown>;
 }
 
+interface CargoRow {
+  cargo: string;
+  nombre: string;
+  documento_identidad: string;
+}
+
 export function KycReviewForm({ data }: KycReviewFormProps) {
   const ds = (data.datos_societarios as Record<string, unknown>) || {};
   const dom = (ds.domicilio_social as Record<string, unknown>) || {};
@@ -44,24 +52,44 @@ export function KycReviewForm({ data }: KycReviewFormProps) {
   const cs = (data.capital_social as Record<string, unknown>) || {};
   const dr = (data.datos_registrales as Record<string, unknown>) || {};
   const oa = (data.organo_administracion as Record<string, unknown>) || {};
-  const cargos = (oa.cargos as Array<Record<string, unknown>>) || [];
+  const cargosRaw = (oa.cargos as Array<Record<string, unknown>>) || [];
   const rl = (data.representante_legal_firmante as Record<string, unknown>) || {};
+
+  const [cargos, setCargos] = useState<CargoRow[]>(
+    cargosRaw.map((c) => ({
+      cargo: String(c.cargo || ""),
+      nombre: String(c.nombre || ""),
+      documento_identidad: String(c.documento_identidad || ""),
+    }))
+  );
+
+  const updateCargo = (index: number, field: keyof CargoRow, value: string) => {
+    setCargos((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  };
+
+  const addCargo = () => {
+    setCargos((prev) => [...prev, { cargo: "", nombre: "", documento_identidad: "" }]);
+  };
+
+  const removeCargo = (index: number) => {
+    setCargos((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <Tabs defaultValue="societarios" className="w-full">
-      <TabsList className="flex w-full gap-0 rounded-t-[10px] rounded-b-none border border-b-0 border-gray-200 bg-white p-0 h-auto">
+      <TabsList className="scrollbar-hide flex w-full cursor-pointer gap-0 overflow-x-auto rounded-t-[10px] rounded-b-none border border-b-0 border-gray-200 bg-white p-0 px-2 h-auto">
         {[
           { value: "societarios", label: "Datos Societarios" },
           { value: "constitucion", label: "Constitución" },
           { value: "capital", label: "Capital Social" },
           { value: "registrales", label: "Datos Registrales" },
-          { value: "organo", label: "Órgano Admin." },
-          { value: "representante", label: "Representante" },
+          { value: "organo", label: "Órgano de Administración" },
+          { value: "representante", label: "Representante Legal" },
         ].map((tab) => (
           <TabsTrigger
             key={tab.value}
             value={tab.value}
-            className="flex-1 rounded-none border-b-[3px] border-transparent px-2 py-2.5 text-[0.75rem] font-medium text-gray-500 transition-all data-[state=active]:border-b-teal data-[state=active]:font-semibold data-[state=active]:text-navy data-[state=active]:shadow-none sm:text-[0.8rem]"
+            className="shrink-0 cursor-pointer rounded-none border-b-[3px] border-transparent px-2.5 py-2.5 text-[0.75rem] font-medium whitespace-nowrap text-gray-500 transition-all hover:text-navy data-[state=active]:border-b-teal data-[state=active]:font-semibold data-[state=active]:text-navy data-[state=active]:shadow-none sm:text-[0.8rem]"
           >
             {tab.label}
           </TabsTrigger>
@@ -135,37 +163,72 @@ export function KycReviewForm({ data }: KycReviewFormProps) {
       {/* Tab: Órgano de Administración */}
       <TabsContent value="organo" className="mt-0 rounded-b-[10px] border border-t-0 border-gray-200 bg-white p-5">
         <Field label="Tipo de órgano" value={_g(oa, "tipo")} />
-        {cargos.length > 0 && (
-          <div className="mt-4">
-            <p className="mb-2 text-sm font-semibold text-navy">Cargos</p>
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-2.5 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400">
-                      Cargo
-                    </th>
-                    <th className="px-4 py-2.5 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400">
-                      Nombre completo
-                    </th>
-                    <th className="px-4 py-2.5 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400">
-                      DNI/NIE/Pasaporte
-                    </th>
+        <div className="mt-4">
+          <p className="mb-1 text-sm font-semibold text-navy">Cargos</p>
+          <p className="mb-2 text-[0.75rem] text-gray-400">Puede añadir o eliminar filas con los botones de la tabla.</p>
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-3 py-2.5 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400">
+                    Cargo
+                  </th>
+                  <th className="px-3 py-2.5 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400">
+                    Nombre completo
+                  </th>
+                  <th className="px-3 py-2.5 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400">
+                    DNI/NIE/Pasaporte
+                  </th>
+                  <th className="w-10 px-2 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {cargos.map((cargo, i) => (
+                  <tr key={i} className="border-b border-gray-100 last:border-0">
+                    <td className="px-3 py-1.5">
+                      <Input
+                        value={cargo.cargo}
+                        onChange={(e) => updateCargo(i, "cargo", e.target.value)}
+                        className="h-8 rounded border-gray-200 text-sm text-navy focus:border-teal focus:ring-teal/15"
+                      />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <Input
+                        value={cargo.nombre}
+                        onChange={(e) => updateCargo(i, "nombre", e.target.value)}
+                        className="h-8 rounded border-gray-200 text-sm text-navy focus:border-teal focus:ring-teal/15"
+                      />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <Input
+                        value={cargo.documento_identidad}
+                        onChange={(e) => updateCargo(i, "documento_identidad", e.target.value)}
+                        className="h-8 rounded border-gray-200 text-sm text-navy focus:border-teal focus:ring-teal/15"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeCargo(i)}
+                        className="rounded p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        title="Eliminar fila"
+                      >
+                        ✕
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {cargos.map((cargo, i) => (
-                    <tr key={i} className="border-b border-gray-100 last:border-0">
-                      <td className="px-4 py-2.5 text-navy">{String(cargo.cargo || "")}</td>
-                      <td className="px-4 py-2.5 text-navy">{String(cargo.nombre || "")}</td>
-                      <td className="px-4 py-2.5 text-navy">{String(cargo.documento_identidad || "")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+          <button
+            type="button"
+            onClick={addCargo}
+            className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-[0.8rem] font-medium text-gray-500 transition-colors hover:border-teal hover:text-teal"
+          >
+            + Añadir fila
+          </button>
+        </div>
       </TabsContent>
 
       {/* Tab: Representante Legal */}

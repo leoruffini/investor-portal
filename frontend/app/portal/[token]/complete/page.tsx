@@ -2,6 +2,7 @@
 
 import { useInvestor } from "@/context/investor-context";
 import { StepIndicator } from "@/components/step-indicator";
+import { Button } from "@/components/ui/button";
 
 export default function CompletePage() {
   const { investor, kycData, loading, error } = useInvestor();
@@ -30,9 +31,9 @@ export default function CompletePage() {
       <StepIndicator currentStep="complete" />
 
       {/* Success section */}
-      <div className="animate-in fade-in slide-in-from-bottom-4 py-8 text-center">
+      <div className="animate-fade-in-up py-10 text-center">
         <div
-          className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full text-[2.2rem]"
+          className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full text-[2.2rem] text-teal"
           style={{
             background: "linear-gradient(135deg, #d4f1f2, #eef8f9)",
             boxShadow: "0 8px 24px rgba(58, 191, 194, 0.15)",
@@ -84,6 +85,29 @@ export default function CompletePage() {
           </div>
         </div>
       </div>
+
+      {/* Download JSON */}
+      {kycData?.extracted_json && (
+        <Button
+          variant="outline"
+          className="mt-5 w-full rounded-lg border-navy text-[0.8rem] font-semibold uppercase tracking-wider text-navy hover:bg-navy hover:text-white"
+          onClick={() => {
+            const json = JSON.stringify(kycData.extracted_json, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const name = String(ds.denominacion_actual || investor.name || "inversor")
+              .replace(/\s+/g, "_")
+              .toUpperCase();
+            a.download = `KYC_${name}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Descargar copia de los datos (JSON)
+        </Button>
+      )}
 
       <p className="mt-6 text-center text-[0.75rem] text-gray-400">
         Provalix generará el Protocolo de Inversión y se pondrá en contacto con

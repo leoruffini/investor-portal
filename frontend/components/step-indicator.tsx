@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 const STEPS = [
   { key: "upload", label: "Documentos" },
+  { key: "processing", label: "Procesamiento" },
   { key: "review", label: "Revisión" },
   { key: "complete", label: "Confirmación" },
 ] as const;
@@ -32,7 +33,7 @@ export function StepIndicator({ currentStep }: { currentStep: StepKey }) {
             <span
               className={cn(
                 "inline-flex h-[1.4rem] w-[1.4rem] items-center justify-center rounded-full text-[0.7rem] font-bold transition-all duration-300",
-                isActive && "bg-teal text-white shadow-[0_2px_8px_rgba(58,191,194,0.3)]",
+                isActive && "animate-pulse-dot bg-teal text-white shadow-[0_2px_8px_rgba(58,191,194,0.3)]",
                 isDone && "bg-navy text-white",
                 !isActive && !isDone && "bg-gray-200 text-gray-500"
               )}

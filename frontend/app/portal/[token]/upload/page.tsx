@@ -23,6 +23,60 @@ const RECOMMENDED_DOCS = [
   { icon: "📈", label: "Ampliaciones de capital" },
 ];
 
+interface ProcessingStep {
+  label: string;
+  state: "pending" | "active" | "done";
+}
+
+function ProcessingSteps({ steps }: { steps: ProcessingStep[] }) {
+  return (
+    <div className="my-6">
+      {steps.map((step, i) => (
+        <div key={i} className="relative flex items-start gap-4 py-3">
+          {/* Vertical connector line */}
+          {i < steps.length - 1 && (
+            <div
+              className="absolute left-[15px] top-[42px] bottom-0 w-0.5"
+              style={{
+                background:
+                  step.state === "done"
+                    ? "#233348"
+                    : step.state === "active"
+                    ? "linear-gradient(180deg, #3ABFC2 0%, #e5e7eb 100%)"
+                    : "#e5e7eb",
+              }}
+            />
+          )}
+          {/* Dot */}
+          <div
+            className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[0.75rem] font-bold transition-all duration-300 ${
+              step.state === "active"
+                ? "animate-pulse-dot bg-teal text-white"
+                : step.state === "done"
+                ? "bg-navy text-white"
+                : "bg-gray-100 text-gray-400"
+            }`}
+          >
+            {step.state === "done" ? "✓" : i + 1}
+          </div>
+          {/* Label */}
+          <span
+            className={`pt-1 text-[0.88rem] font-medium ${
+              step.state === "active"
+                ? "font-semibold text-navy"
+                : step.state === "done"
+                ? "text-navy"
+                : "text-gray-400"
+            }`}
+          >
+            {step.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function UploadPage() {
   const { investor, loading, error: ctxError, refresh } = useInvestor();
   const router = useRouter();
@@ -30,6 +84,9 @@ export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
+  const [progressPct, setProgressPct] = useState(0);
+  const [progressText, setProgressText] = useState("");
 
   if (loading) {
     return (
@@ -64,18 +121,101 @@ export default function UploadPage() {
     try {
       setUploading(true);
       setError(null);
-      await uploadDocs(investor.id, files);
+
+      // Initialize processing steps
+      const steps: ProcessingStep[] = [
+        { label: "Guardando documentos…", state: "active" },
+        { label: "Extrayendo texto de los PDFs…", state: "pending" },
+        { label: "Analizando documentos con IA…", state: "pending" },
+        { label: "Preparando formulario…", state: "pending" },
+      ];
+      setProcessingSteps([...steps]);
+      setProgressPct(10);
+      setProgressText("Guardando documentos…");
+
+      // Simulate step progression during actual upload
+      const advanceStep = (idx: number, text: string, pct: number) => {
+        steps.forEach((s, i) => {
+          if (i < idx) s.state = "done";
+          else if (i === idx) s.state = "active";
+          else s.state = "pending";
+        });
+        setProcessingSteps([...steps]);
+        setProgressPct(pct);
+        setProgressText(text);
+      };
+
+      // Step 1 → 2 quickly (saving is fast)
+      await new Promise((r) => setTimeout(r, 600));
+      advanceStep(1, "Extrayendo texto de los PDFs…", 20);
+
+      // Start the actual upload + processing (OCR + LLM happens server-side)
+      // Step 2 (text extraction / OCR) stays active during most of the wait
+      const uploadPromise = uploadDocs(investor.id, files);
+
+      // Wait for upload to finish — OCR is the bottleneck
+      await uploadPromise;
+
+      // Once the server responds, quickly advance through remaining steps
+      advanceStep(2, "Analizando documentos con IA…", 75);
+      await new Promise((r) => setTimeout(r, 400));
+
+      advanceStep(3, "Preparando formulario…", 95);
+      await new Promise((r) => setTimeout(r, 300));
+
+      // All done
+      steps.forEach((s) => (s.state = "done"));
+      setProcessingSteps([...steps]);
+      setProgressPct(100);
+      setProgressText("Listo");
+
       await refresh();
       router.push(`/portal/${params.token}/review`);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al subir los documentos"
       );
-    } finally {
       setUploading(false);
+      setProcessingSteps([]);
+      setProgressPct(0);
     }
   };
 
+  // Processing view
+  if (uploading && processingSteps.length > 0) {
+    return (
+      <>
+        <StepIndicator currentStep="processing" />
+
+        {/* Progress bar */}
+        <div className="mb-1 text-[0.82rem] text-gray-500">{progressText}</div>
+        <div className="mb-6 h-2 overflow-hidden rounded-full bg-gray-200">
+          <div
+            className="h-full rounded-full bg-teal transition-all duration-500 ease-out"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+
+        {/* Status box with processing steps */}
+        <div className="rounded-[10px] border border-gray-200 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center gap-2 text-sm text-navy">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-navy border-t-transparent" />
+            Analizando documentos…
+          </div>
+          <ProcessingSteps steps={processingSteps} />
+          {/* Show file extraction results */}
+          {files.map((f) => (
+            <div key={f.name} className="mt-1 text-[0.85rem] text-navy">
+              ✓ {f.name} — {(f.size / 1024).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} KB
+            </div>
+          ))}
+        </div>
+
+      </>
+    );
+  }
+
+  // Normal upload view
   return (
     <>
       <StepIndicator currentStep="upload" />
@@ -142,17 +282,10 @@ export default function UploadPage() {
         disabled={files.length === 0 || uploading}
         className="w-full rounded-lg bg-gradient-to-br from-navy to-[#2d4562] py-5 text-[0.82rem] font-semibold uppercase tracking-wider shadow-[0_2px_8px_rgba(35,51,72,0.2)] transition-all hover:from-[#2d4562] hover:to-[#3a5a7a] hover:shadow-[0_4px_16px_rgba(35,51,72,0.3)]"
       >
-        {uploading ? (
-          <span className="flex items-center gap-2">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            Procesando documentos…
-          </span>
-        ) : (
-          "Procesar documentos"
-        )}
+        Procesar documentos
       </Button>
 
-      {files.length === 0 && !uploading && (
+      {files.length === 0 && (
         <div className="mt-4 rounded-lg border border-teal/20 bg-[#eef8f9] px-4 py-3 text-[0.85rem] text-navy">
           Suba al menos un documento PDF para continuar.
         </div>
