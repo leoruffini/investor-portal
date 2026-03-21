@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from datetime import datetime, timezone
 
 from typing import Optional
 
@@ -104,7 +105,7 @@ async def confirm_kyc_data(
     extracted_json: Optional[dict] = Body(None),
 ):
     """Mark KYC data as confirmed, optionally updating the extracted JSON with investor edits."""
-    update_payload: dict = {"confirmed": True, "confirmed_at": "now()"}
+    update_payload: dict = {"confirmed": True, "confirmed_at": datetime.now(timezone.utc).isoformat()}
     if extracted_json is not None:
         update_payload["extracted_json"] = extracted_json
 
