@@ -33,7 +33,7 @@ Original Streamlit prototype (`app.py`) is kept as reference only.
   - Teal: `#3ABFC2` (accents, active states, highlights)
   - Light bg: `#f8f9fb`
   - Fonts: Inter (body), Playfair Display (headings)
-- **Backoffice auth**: simple password protection via `ADMIN_PASSWORD` env var, cookie-based session, middleware guard on `/admin/*` routes
+- **Backoffice auth**: `ADMIN_PASSWORD` env var, HMAC-SHA256 signed cookie (`admin_session`), middleware guard on `/admin/*` routes. Middleware runs in **edge runtime** — only use Web Crypto API (`crypto.subtle`), not Node.js `crypto` module.
 
 ### Database: Supabase
 - PostgreSQL for structured data (promotions, investors, KYC data, statuses)
@@ -42,11 +42,14 @@ Original Streamlit prototype (`app.py`) is kept as reference only.
 
 ### Deployment (live)
 - Backend: Render Starter ($7/mo, Docker) → `https://investor-portal-1.onrender.com`
-  - Env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `LLM_PROVIDER`, `CORS_ORIGINS`
+  - Env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `LLM_PROVIDER`, `CORS_ORIGINS`, `BACKEND_API_KEY`
   - Health check: `/health`
+  - Swagger docs (`/docs`, `/redoc`, `/openapi.json`) are disabled in production (detected via `RENDER` env var)
+  - All data endpoints require `X-API-Key` header matching `BACKEND_API_KEY`; if key is not set in prod, endpoints return 503
+  - All path parameters (IDs) are validated as UUIDs; invalid values return 422
   - Starter tier includes: zero downtime deploys, SSH, scaling, one-off jobs, persistent disks
 - Frontend: Vercel → `https://investor-portal-eosin-ten.vercel.app`
-  - Env vars: `NEXT_PUBLIC_API_URL`, `ADMIN_PASSWORD`
+  - Env vars: `NEXT_PUBLIC_API_URL`, `ADMIN_PASSWORD`, `NEXT_PUBLIC_API_KEY` (must match `BACKEND_API_KEY`)
 - DB: Supabase Cloud (`rwblntkhdwsfcmrtxiia`)
 
 ## Data model (core tables)
