@@ -142,7 +142,11 @@ export async function createInvestor(data: {
 export async function deleteInvestor(investorId: string): Promise<void> {
   const headers: HeadersInit = {};
   if (API_KEY) headers["X-API-Key"] = API_KEY;
-  await fetch(`${API_BASE}/investors/${investorId}`, { method: "DELETE", headers });
+  const res = await fetch(`${API_BASE}/investors/${investorId}`, { method: "DELETE", headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API error ${res.status}: ${body}`);
+  }
 }
 
 // --- Protocol ---
