@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import io
@@ -10,13 +12,15 @@ router = APIRouter(prefix="/protocol", tags=["protocol"])
 
 
 @router.post("/generate/{investor_id}")
-async def generate_protocol_endpoint(investor_id: str):
+async def generate_protocol_endpoint(investor_id: UUID):
     """
     Generate the Investment Protocol Word document for an investor.
     Requires confirmed KYC data and an investment_amount on the investor record.
     """
+    inv_id = str(investor_id)
+
     # Get investor
-    inv_result = supabase.table("investors").select("*").eq("id", investor_id).execute()
+    inv_result = supabase.table("investors").select("*").eq("id", inv_id).execute()
     if not inv_result.data:
         raise HTTPException(status_code=404, detail="Inversor no encontrado")
     investor = inv_result.data[0]
@@ -25,7 +29,7 @@ async def generate_protocol_endpoint(investor_id: str):
         raise HTTPException(status_code=400, detail="El inversor no tiene importe de inversión definido")
 
     # Get confirmed KYC data
-    kyc_result = supabase.table("kyc_data").select("*").eq("investor_id", investor_id).execute()
+    kyc_result = supabase.table("kyc_data").select("*").eq("investor_id", inv_id).execute()
     if not kyc_result.data:
         raise HTTPException(status_code=400, detail="No hay datos KYC para este inversor")
 
@@ -39,7 +43,7 @@ async def generate_protocol_endpoint(investor_id: str):
 
     # Upload to Supabase Storage
     filename = f"Protocolo_Inversion_{investor['name'].replace(' ', '_').upper()}.docx"
-    storage_path = f"{investor_id}/{filename}"
+    storage_path = f"{inv_id}/{filename}"
 
     # Remove previous version if exists
     supabase.storage.from_("documents").remove([storage_path])
@@ -51,7 +55,7 @@ async def generate_protocol_endpoint(investor_id: str):
     )
 
     # Update investor status
-    supabase.table("investors").update({"status": "complete"}).eq("id", investor_id).execute()
+    supabase.table("investors").update({"status": "complete"}).eq("id", inv_id).execute()
 
     # Return the file
     return StreamingResponse(

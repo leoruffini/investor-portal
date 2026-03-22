@@ -2,6 +2,7 @@ import logging
 import re
 import unicodedata
 from datetime import datetime, timezone
+from uuid import UUID
 
 from typing import Optional
 
@@ -65,13 +66,15 @@ def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes
 
 
 @router.post("/upload-docs/{investor_id}")
-async def upload_docs(investor_id: str, files: list[UploadFile], background_tasks: BackgroundTasks):
+async def upload_docs(investor_id: UUID, files: list[UploadFile], background_tasks: BackgroundTasks):
     """
     Receive PDFs, save to storage, then process (OCR + LLM) in background.
     Returns 202 immediately so the frontend doesn't time out.
     """
+    inv_id = str(investor_id)
+
     # Verify investor exists
-    inv = supabase.table("investors").select("id").eq("id", investor_id).execute()
+    inv = supabase.table("investors").select("id").eq("id", inv_id).execute()
     if not inv.data:
         raise HTTPException(status_code=404, detail="Inversor no encontrado")
 
@@ -85,14 +88,14 @@ async def upload_docs(investor_id: str, files: list[UploadFile], background_task
 
         # Upload to storage + save metadata (fast)
         safe_name = _sanitize_filename(file.filename)
-        storage_path = f"{investor_id}/{safe_name}"
+        storage_path = f"{inv_id}/{safe_name}"
         supabase.storage.from_("documents").upload(
             path=storage_path,
             file=pdf_bytes,
             file_options={"content-type": "application/pdf", "upsert": "true"},
         )
         supabase.table("documents").insert({
-            "investor_id": investor_id,
+            "investor_id": inv_id,
             "filename": file.filename,
             "storage_path": storage_path,
             "doc_type": "otro",
@@ -101,15 +104,15 @@ async def upload_docs(investor_id: str, files: list[UploadFile], background_task
         file_texts.append((file.filename, pdf_bytes))
 
     # Kick off heavy processing (OCR + LLM) in background
-    background_tasks.add_task(_process_docs_background, investor_id, file_texts)
+    background_tasks.add_task(_process_docs_background, inv_id, file_texts)
 
-    return JSONResponse(status_code=202, content={"status": "processing", "investor_id": investor_id})
+    return JSONResponse(status_code=202, content={"status": "processing", "investor_id": inv_id})
 
 
 @router.get("/kyc-data/{investor_id}", response_model=KycData)
-async def get_kyc_data(investor_id: str):
+async def get_kyc_data(investor_id: UUID):
     """Retrieve extracted KYC data for an investor."""
-    result = supabase.table(TABLE).select("*").eq("investor_id", investor_id).execute()
+    result = supabase.table(TABLE).select("*").eq("investor_id", str(investor_id)).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Datos KYC no encontrados para este inversor")
     return result.data[0]
@@ -117,10 +120,11 @@ async def get_kyc_data(investor_id: str):
 
 @router.patch("/kyc-data/{investor_id}/confirm", response_model=KycData)
 async def confirm_kyc_data(
-    investor_id: str,
+    investor_id: UUID,
     extracted_json: Optional[dict] = Body(None),
 ):
     """Mark KYC data as confirmed, optionally updating the extracted JSON with investor edits."""
+    inv_id = str(investor_id)
     update_payload: dict = {"confirmed": True, "confirmed_at": datetime.now(timezone.utc).isoformat()}
     if extracted_json is not None:
         update_payload["extracted_json"] = extracted_json
@@ -128,13 +132,13 @@ async def confirm_kyc_data(
     result = (
         supabase.table(TABLE)
         .update(update_payload)
-        .eq("investor_id", investor_id)
+        .eq("investor_id", inv_id)
         .execute()
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Datos KYC no encontrados para este inversor")
 
     # Update investor status
-    supabase.table("investors").update({"status": "data_confirmed"}).eq("id", investor_id).execute()
+    supabase.table("investors").update({"status": "data_confirmed"}).eq("id", inv_id).execute()
 
     return result.data[0]

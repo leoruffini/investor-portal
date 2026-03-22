@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException
 
 from db import supabase
@@ -15,8 +17,8 @@ async def list_promotions():
 
 
 @router.get("/{promotion_id}", response_model=Promotion)
-async def get_promotion(promotion_id: str):
-    result = supabase.table(TABLE).select("*").eq("id", promotion_id).execute()
+async def get_promotion(promotion_id: UUID):
+    result = supabase.table(TABLE).select("*").eq("id", str(promotion_id)).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Promoción no encontrada")
     return result.data[0]
@@ -29,14 +31,14 @@ async def create_promotion(payload: PromotionCreate):
 
 
 @router.patch("/{promotion_id}", response_model=Promotion)
-async def update_promotion(promotion_id: str, payload: PromotionUpdate):
+async def update_promotion(promotion_id: UUID, payload: PromotionUpdate):
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     result = (
         supabase.table(TABLE)
         .update(updates)
-        .eq("id", promotion_id)
+        .eq("id", str(promotion_id))
         .execute()
     )
     if not result.data:
@@ -45,7 +47,7 @@ async def update_promotion(promotion_id: str, payload: PromotionUpdate):
 
 
 @router.delete("/{promotion_id}", status_code=204)
-async def delete_promotion(promotion_id: str):
-    result = supabase.table(TABLE).delete().eq("id", promotion_id).execute()
+async def delete_promotion(promotion_id: UUID):
+    result = supabase.table(TABLE).delete().eq("id", str(promotion_id)).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Promoción no encontrada")

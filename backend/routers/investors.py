@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException
 
 from db import supabase
@@ -23,8 +25,8 @@ async def list_investors(
 
 
 @router.get("/{investor_id}", response_model=Investor)
-async def get_investor(investor_id: str):
-    result = supabase.table(TABLE).select("*").eq("id", investor_id).execute()
+async def get_investor(investor_id: UUID):
+    result = supabase.table(TABLE).select("*").eq("id", str(investor_id)).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Inversor no encontrado")
     return result.data[0]
@@ -37,14 +39,14 @@ async def create_investor(payload: InvestorCreate):
 
 
 @router.patch("/{investor_id}", response_model=Investor)
-async def update_investor(investor_id: str, payload: InvestorUpdate):
+async def update_investor(investor_id: UUID, payload: InvestorUpdate):
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No hay campos para actualizar")
     result = (
         supabase.table(TABLE)
         .update(updates)
-        .eq("id", investor_id)
+        .eq("id", str(investor_id))
         .execute()
     )
     if not result.data:
@@ -53,7 +55,7 @@ async def update_investor(investor_id: str, payload: InvestorUpdate):
 
 
 @router.delete("/{investor_id}", status_code=204)
-async def delete_investor(investor_id: str):
-    result = supabase.table(TABLE).delete().eq("id", investor_id).execute()
+async def delete_investor(investor_id: UUID):
+    result = supabase.table(TABLE).delete().eq("id", str(investor_id)).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Inversor no encontrado")
