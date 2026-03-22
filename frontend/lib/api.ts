@@ -25,13 +25,25 @@ export async function getInvestor(investorId: string): Promise<Investor> {
   return apiFetch<Investor>(`/investors/${investorId}`);
 }
 
-export async function uploadDocs(investorId: string, files: File[]): Promise<KycData> {
+export async function uploadDocs(investorId: string, files: File[]): Promise<{ status: string }> {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
-  return apiFetch<KycData>(`/kyc/upload-docs/${investorId}`, {
+  return apiFetch<{ status: string }>(`/kyc/upload-docs/${investorId}`, {
     method: "POST",
     body: formData,
   });
+}
+
+export async function pollKycData(
+  investorId: string,
+  { intervalMs = 3000, maxAttempts = 60 } = {}
+): Promise<KycData> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const data = await getKycData(investorId);
+    if (data) return data;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("El procesamiento está tardando más de lo esperado. Recargue la página para ver si sus datos están listos.");
 }
 
 export async function getKycData(investorId: string): Promise<KycData | null> {

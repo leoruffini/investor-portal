@@ -41,9 +41,10 @@ Original Streamlit prototype (`app.py`) is kept as reference only.
 - Auth with magic links for investors
 
 ### Deployment (live)
-- Backend: Render (Docker) → `https://investor-portal-1.onrender.com`
+- Backend: Render Starter ($7/mo, Docker) → `https://investor-portal-1.onrender.com`
   - Env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `LLM_PROVIDER`, `CORS_ORIGINS`
   - Health check: `/health`
+  - Starter tier includes: zero downtime deploys, SSH, scaling, one-off jobs, persistent disks
 - Frontend: Vercel → `https://investor-portal-eosin-ten.vercel.app`
   - Env vars: `NEXT_PUBLIC_API_URL`, `ADMIN_PASSWORD`
 - DB: Supabase Cloud (`rwblntkhdwsfcmrtxiia`)

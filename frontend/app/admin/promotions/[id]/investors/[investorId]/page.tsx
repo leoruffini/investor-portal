@@ -8,6 +8,7 @@ import {
   getDocuments,
   downloadDocument,
   uploadDocs,
+  pollKycData,
   confirmKycData,
   generateProtocol,
 } from "@/lib/api";
@@ -72,7 +73,8 @@ export default function InvestorDetailPage({
     setUploadError("");
 
     try {
-      const result = await uploadDocs(investorId, files);
+      await uploadDocs(investorId, files);
+      const result = await pollKycData(investorId);
       setKycData(result);
       setFiles([]);
       await load();

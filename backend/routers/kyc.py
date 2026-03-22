@@ -1,14 +1,18 @@
+import logging
 import re
 import unicodedata
 from datetime import datetime, timezone
 
 from typing import Optional
 
-from fastapi import APIRouter, Body, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
 
 from db import supabase
 from models.schemas import KycData
 from services.extraction import extract_text_from_pdf, extract_with_llm, validate_kyc
+
+logger = logging.getLogger(__name__)
 
 
 def _sanitize_filename(name: str) -> str:
@@ -23,26 +27,63 @@ router = APIRouter(prefix="/kyc", tags=["kyc"])
 TABLE = "kyc_data"
 
 
-@router.post("/upload-docs/{investor_id}", response_model=KycData)
-async def upload_docs(investor_id: str, files: list[UploadFile]):
+def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes]]):
+    """Background task: extract text from PDFs, call LLM, save results."""
+    try:
+        all_texts: list[str] = []
+        for filename, pdf_bytes in file_texts:
+            text = extract_text_from_pdf(pdf_bytes, filename)
+            if text:
+                all_texts.append(f"=== DOCUMENTO: {filename} ===\n{text}")
+
+        if not all_texts:
+            logger.error("No text extracted from any PDF for investor %s", investor_id)
+            return
+
+        combined_text = "\n\n".join(all_texts)
+        extracted = extract_with_llm(combined_text)
+
+        # Upsert into kyc_data
+        existing = supabase.table(TABLE).select("id").eq("investor_id", investor_id).execute()
+        if existing.data:
+            supabase.table(TABLE).update({
+                "extracted_json": extracted,
+                "confirmed": False,
+                "confirmed_at": None,
+            }).eq("investor_id", investor_id).execute()
+        else:
+            supabase.table(TABLE).insert({
+                "investor_id": investor_id,
+                "extracted_json": extracted,
+            }).execute()
+
+        # Update investor status
+        supabase.table("investors").update({"status": "docs_uploaded"}).eq("id", investor_id).execute()
+        logger.info("Background processing complete for investor %s", investor_id)
+    except Exception:
+        logger.exception("Background processing failed for investor %s", investor_id)
+
+
+@router.post("/upload-docs/{investor_id}")
+async def upload_docs(investor_id: str, files: list[UploadFile], background_tasks: BackgroundTasks):
     """
-    Receive PDFs, extract text, call LLM, save extracted JSON to kyc_data.
-    Also uploads files to Supabase Storage and records them in documents table.
+    Receive PDFs, save to storage, then process (OCR + LLM) in background.
+    Returns 202 immediately so the frontend doesn't time out.
     """
     # Verify investor exists
     inv = supabase.table("investors").select("id").eq("id", investor_id).execute()
     if not inv.data:
         raise HTTPException(status_code=404, detail="Inversor no encontrado")
 
-    # Extract text from each PDF
-    all_texts: list[str] = []
+    # Save files to storage and read bytes for background processing
+    file_texts: list[tuple[str, bytes]] = []
     for file in files:
         if not file.filename or not file.filename.lower().endswith(".pdf"):
             raise HTTPException(status_code=400, detail=f"Solo se aceptan archivos PDF: {file.filename}")
 
         pdf_bytes = await file.read()
 
-        # Upload to storage + save metadata
+        # Upload to storage + save metadata (fast)
         safe_name = _sanitize_filename(file.filename)
         storage_path = f"{investor_id}/{safe_name}"
         supabase.storage.from_("documents").upload(
@@ -57,37 +98,12 @@ async def upload_docs(investor_id: str, files: list[UploadFile]):
             "doc_type": "otro",
         }).execute()
 
-        text = extract_text_from_pdf(pdf_bytes, file.filename)
-        if text:
-            all_texts.append(f"=== DOCUMENTO: {file.filename} ===\n{text}")
+        file_texts.append((file.filename, pdf_bytes))
 
-    if not all_texts:
-        raise HTTPException(status_code=400, detail="No se pudo extraer texto de ningún PDF")
+    # Kick off heavy processing (OCR + LLM) in background
+    background_tasks.add_task(_process_docs_background, investor_id, file_texts)
 
-    combined_text = "\n\n".join(all_texts)
-
-    # LLM extraction
-    extracted = extract_with_llm(combined_text)
-
-    # Upsert into kyc_data (one row per investor)
-    existing = supabase.table(TABLE).select("id").eq("investor_id", investor_id).execute()
-    if existing.data:
-        result = (
-            supabase.table(TABLE)
-            .update({"extracted_json": extracted, "confirmed": False, "confirmed_at": None})
-            .eq("investor_id", investor_id)
-            .execute()
-        )
-    else:
-        result = supabase.table(TABLE).insert({
-            "investor_id": investor_id,
-            "extracted_json": extracted,
-        }).execute()
-
-    # Update investor status
-    supabase.table("investors").update({"status": "docs_uploaded"}).eq("id", investor_id).execute()
-
-    return result.data[0]
+    return JSONResponse(status_code=202, content={"status": "processing", "investor_id": investor_id})
 
 
 @router.get("/kyc-data/{investor_id}", response_model=KycData)

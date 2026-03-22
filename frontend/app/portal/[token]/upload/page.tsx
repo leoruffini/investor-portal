@@ -8,7 +8,7 @@ import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { uploadDocs } from "@/lib/api";
+import { uploadDocs, pollKycData } from "@/lib/api";
 
 const PROCESS_CARDS = [
   { icon: "📄", title: "1. Suba documentos", desc: "Escrituras, poderes y documentos societarios en PDF" },
@@ -145,18 +145,18 @@ export default function UploadPage() {
         setProgressText(text);
       };
 
-      // Step 1 → 2 quickly (saving is fast)
-      await new Promise((r) => setTimeout(r, 600));
+      // Step 1: Upload files (returns quickly with 202)
+      await uploadDocs(investor.id, files);
       advanceStep(1, "Extrayendo texto de los PDFs…", 20);
 
-      // Start the actual upload + processing (OCR + LLM happens server-side)
-      // Step 2 (text extraction / OCR) stays active during most of the wait
-      const uploadPromise = uploadDocs(investor.id, files);
+      // Step 2-3: Poll for KYC data (OCR + LLM runs in backend background)
+      advanceStep(1, "Extrayendo texto de los PDFs…", 30);
 
-      // Wait for upload to finish — OCR is the bottleneck
-      await uploadPromise;
+      await pollKycData(investor.id, {
+        intervalMs: 3000,
+        maxAttempts: 60,
+      });
 
-      // Once the server responds, quickly advance through remaining steps
       advanceStep(2, "Analizando documentos con IA…", 75);
       await new Promise((r) => setTimeout(r, 400));
 
