@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 
-/** Create an HMAC signature from the admin password so the cookie value can't be forged. */
-function signSession(secret: string): string {
-  return crypto.createHmac("sha256", secret).update("admin_session").digest("hex");
-}
-
-/** Verify a session token matches the expected HMAC. */
-export function verifySession(token: string): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) return false;
-  const expected = signSession(adminPassword);
-  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+/** Create an HMAC-SHA256 signature from the admin password (Web Crypto API). */
+async function signSession(secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode("admin_session"));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export async function POST(request: NextRequest) {
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sessionToken = signSession(adminPassword);
+  const sessionToken = await signSession(adminPassword);
   const response = NextResponse.json({ ok: true });
   response.cookies.set("admin_session", sessionToken, {
     httpOnly: true,
