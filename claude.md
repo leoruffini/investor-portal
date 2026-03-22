@@ -6,14 +6,13 @@ Web system to automate KYC data collection from real estate investors. Provalix 
 
 ## Current state
 
-**Phase 1 (API backend)** and **Phase 2 (investor portal)** are complete and merged to `main`.
-**Phase 3 (backoffice)** is in progress on `feature/backoffice`.
+**All 3 phases** are complete and merged to `main`. The app is deployed.
 
 What works today:
 - FastAPI backend with Supabase (promotions, investors, documents, KYC data)
 - PDF upload → text extraction (PyMuPDF + OCR) → LLM extraction (Claude/GPT) → review form → protocol generation
 - Investor portal: personalized link (`/portal/{token}`) → upload docs → review extracted data → confirm
-- Backoffice (in progress): admin panel at `/admin` with password protection
+- Backoffice: admin panel at `/admin` with password protection
 
 Original Streamlit prototype (`app.py`) is kept as reference only.
 
@@ -41,10 +40,13 @@ Original Streamlit prototype (`app.py`) is kept as reference only.
 - Supabase Storage for PDFs and generated documents
 - Auth with magic links for investors
 
-### Deployment
-- Backend: Render (Docker, as currently)
-- Frontend: Vercel
-- DB: Supabase Cloud
+### Deployment (live)
+- Backend: Render (Docker) → `https://investor-portal-1.onrender.com`
+  - Env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`, `LLM_PROVIDER`, `CORS_ORIGINS`
+  - Health check: `/health`
+- Frontend: Vercel → `https://investor-portal-eosin-ten.vercel.app`
+  - Env vars: `NEXT_PUBLIC_API_URL`, `ADMIN_PASSWORD`
+- DB: Supabase Cloud (`rwblntkhdwsfcmrtxiia`)
 
 ## Data model (core tables)
 
@@ -90,7 +92,7 @@ Next.js frontend for the investor.
 - Data review form (`/portal/{token}/review`)
 - Confirmation page (`/portal/{token}/complete`)
 
-### Phase 3: `feature/backoffice` ← CURRENT
+### Phase 3: `feature/backoffice` ✅ COMPLETE (merged to main)
 Provalix admin panel at `/admin`.
 - **Auth**: password login (`/admin/login`), middleware guard, cookie-based session, `ADMIN_PASSWORD` env var
 - **Dashboard** (`/admin`): promotion cards with investor counts and progress bars
@@ -168,7 +170,6 @@ streamlit run app.py
 
 # Git
 git checkout main
-git checkout feature/backoffice    # current work branch
 ```
 
 ## Business context
