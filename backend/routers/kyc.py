@@ -27,6 +27,22 @@ router = APIRouter(prefix="/kyc", tags=["kyc"])
 
 TABLE = "kyc_data"
 
+# Keywords to infer doc_type from filename
+_DOC_TYPE_KEYWORDS: list[tuple[str, list[str]]] = [
+    ("escritura_constitucion", ["constitucion", "constitución", "escritura"]),
+    ("nombramiento", ["nombramiento", "cargo", "administrador"]),
+    ("poderes", ["poder", "poderes", "apoderamiento"]),
+]
+
+
+def _infer_doc_type(filename: str) -> str:
+    """Infer document type from filename keywords."""
+    lower = filename.lower()
+    for doc_type, keywords in _DOC_TYPE_KEYWORDS:
+        if any(kw in lower for kw in keywords):
+            return doc_type
+    return "otro"
+
 
 def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes]]):
     """Background task: extract text from PDFs, call LLM, save results."""
@@ -94,12 +110,28 @@ async def upload_docs(investor_id: UUID, files: list[UploadFile], background_tas
             file=pdf_bytes,
             file_options={"content-type": "application/pdf", "upsert": "true"},
         )
-        supabase.table("documents").insert({
-            "investor_id": inv_id,
-            "filename": file.filename,
-            "storage_path": storage_path,
-            "doc_type": "otro",
-        }).execute()
+
+        # Upsert document record to avoid duplicates on re-upload
+        doc_type = _infer_doc_type(file.filename)
+        existing_doc = (
+            supabase.table("documents")
+            .select("id")
+            .eq("investor_id", inv_id)
+            .eq("storage_path", storage_path)
+            .execute()
+        )
+        if existing_doc.data:
+            supabase.table("documents").update({
+                "filename": file.filename,
+                "doc_type": doc_type,
+            }).eq("id", existing_doc.data[0]["id"]).execute()
+        else:
+            supabase.table("documents").insert({
+                "investor_id": inv_id,
+                "filename": file.filename,
+                "storage_path": storage_path,
+                "doc_type": doc_type,
+            }).execute()
 
         file_texts.append((file.filename, pdf_bytes))
 
