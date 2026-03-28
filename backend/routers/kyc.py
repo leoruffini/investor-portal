@@ -55,6 +55,7 @@ def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes
 
         if not all_texts:
             logger.error("No text extracted from any PDF for investor %s", investor_id)
+            supabase.table("investors").update({"status": "processing_failed"}).eq("id", investor_id).execute()
             return
 
         combined_text = "\n\n".join(all_texts)
@@ -79,6 +80,10 @@ def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes
         logger.info("Background processing complete for investor %s", investor_id)
     except Exception:
         logger.exception("Background processing failed for investor %s", investor_id)
+        try:
+            supabase.table("investors").update({"status": "processing_failed"}).eq("id", investor_id).execute()
+        except Exception:
+            logger.exception("Failed to update status to processing_failed for investor %s", investor_id)
 
 
 @router.post("/upload-docs/{investor_id}")
@@ -134,6 +139,9 @@ async def upload_docs(investor_id: UUID, files: list[UploadFile], background_tas
             }).execute()
 
         file_texts.append((file.filename, pdf_bytes))
+
+    # Mark investor as processing before kicking off background task
+    supabase.table("investors").update({"status": "processing"}).eq("id", inv_id).execute()
 
     # Kick off heavy processing (OCR + LLM) in background
     background_tasks.add_task(_process_docs_background, inv_id, file_texts)

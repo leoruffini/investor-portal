@@ -1,4 +1,4 @@
-export type InvestorStatus = "pending" | "docs_uploaded" | "data_confirmed" | "complete";
+export type InvestorStatus = "pending" | "processing" | "processing_failed" | "docs_uploaded" | "data_confirmed" | "complete";
 
 export type DocType = "escritura_constitucion" | "nombramiento" | "poderes" | "otro";
 

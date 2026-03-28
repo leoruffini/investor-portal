@@ -5,6 +5,14 @@ const config: Record<InvestorStatus, { label: string; className: string }> = {
     label: "Pendiente",
     className: "bg-gray-100 text-gray-600",
   },
+  processing: {
+    label: "Procesando",
+    className: "bg-indigo-50 text-indigo-700",
+  },
+  processing_failed: {
+    label: "Error procesando",
+    className: "bg-red-50 text-red-700",
+  },
   docs_uploaded: {
     label: "Docs subidos",
     className: "bg-amber-50 text-amber-700",

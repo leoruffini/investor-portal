@@ -152,10 +152,7 @@ export default function UploadPage() {
       // Step 2-3: Poll for KYC data (OCR + LLM runs in backend background)
       advanceStep(1, "Extrayendo texto de los PDFs…", 30);
 
-      await pollKycData(investor.id, {
-        intervalMs: 3000,
-        maxAttempts: 60,
-      });
+      await pollKycData(investor.id);
 
       advanceStep(2, "Analizando documentos con IA…", 75);
       await new Promise((r) => setTimeout(r, 400));

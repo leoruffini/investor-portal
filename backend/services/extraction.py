@@ -170,7 +170,7 @@ def extract_with_llm(text: str, llm_provider: str | None = None) -> dict[str, An
     prompt = EXTRACTION_PROMPT + text[:MAX_CHARS]
 
     if llm_provider == "anthropic" and HAS_ANTHROPIC:
-        client = anthropic.Anthropic()
+        client = anthropic.Anthropic(timeout=120.0)
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
