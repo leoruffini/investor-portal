@@ -16,7 +16,7 @@ create table investors (
   investment_amount numeric,
   ownership_pct     numeric,
   status            text not null default 'pending'
-                    check (status in ('pending', 'docs_uploaded', 'data_confirmed', 'complete')),
+                    check (status in ('pending', 'processing', 'processing_failed', 'docs_uploaded', 'data_confirmed', 'complete')),
   token             text unique default gen_random_uuid()::text,
   created_at        timestamptz not null default now()
 );

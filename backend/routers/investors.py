@@ -54,8 +54,9 @@ async def update_investor(investor_id: UUID, payload: InvestorUpdate):
     return result.data[0]
 
 
-@router.delete("/{investor_id}", status_code=204)
+@router.delete("/{investor_id}")
 async def delete_investor(investor_id: UUID):
     result = supabase.table(TABLE).delete().eq("id", str(investor_id)).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Inversor no encontrado")
+    return {"status": "deleted"}

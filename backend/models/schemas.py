@@ -9,6 +9,8 @@ from pydantic import BaseModel, EmailStr
 
 class InvestorStatus(str, Enum):
     pending = "pending"
+    processing = "processing"
+    processing_failed = "processing_failed"
     docs_uploaded = "docs_uploaded"
     data_confirmed = "data_confirmed"
     complete = "complete"
