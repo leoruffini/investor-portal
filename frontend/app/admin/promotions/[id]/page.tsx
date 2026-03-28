@@ -16,6 +16,15 @@ import { ChevronDown } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { CopyLinkButton } from "@/components/copy-link-button";
 
+const fmtEur = (v: number) =>
+  v.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
+const fmtInt = (v: number) =>
+  Math.round(v).toLocaleString("es-ES", { useGrouping: true });
+
+const fmtPct = (v: number) =>
+  v.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
+
 export default function PromotionDetailPage({
   params,
 }: {
@@ -242,6 +251,9 @@ export default function PromotionDetailPage({
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
                   placeholder="0"
                 />
+                {settings.total_investment != null && (
+                  <p className="mt-1 text-xs text-gray-400">{fmtEur(settings.total_investment)}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -256,6 +268,9 @@ export default function PromotionDetailPage({
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
                   placeholder="0"
                 />
+                {settings.total_shares != null && (
+                  <p className="mt-1 text-xs text-gray-400">{fmtInt(settings.total_shares)}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -271,6 +286,9 @@ export default function PromotionDetailPage({
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
                   placeholder="30"
                 />
+                {settings.first_disbursement_pct != null && (
+                  <p className="mt-1 text-xs text-gray-400">{fmtPct(settings.first_disbursement_pct)}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -286,6 +304,9 @@ export default function PromotionDetailPage({
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
                   placeholder="70"
                 />
+                {settings.second_disbursement_pct != null && (
+                  <p className="mt-1 text-xs text-gray-400">{fmtPct(settings.second_disbursement_pct)}</p>
+                )}
               </div>
             </div>
             {disbursementWarning && (
@@ -334,7 +355,7 @@ export default function PromotionDetailPage({
       ) : (
         <Card>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/50">
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -350,13 +371,10 @@ export default function PromotionDetailPage({
                     %
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Participaciones
+                    Partic.
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-400">
                     Estado
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Enlace
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
                     Acciones
@@ -369,40 +387,38 @@ export default function PromotionDetailPage({
                     key={inv.id}
                     className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
                   >
-                    <td className="px-4 py-3 font-medium text-navy">
+                    <td className="px-4 py-3 font-medium text-navy whitespace-nowrap">
                       {inv.name}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {inv.email}
                     </td>
-                    <td className="px-4 py-3 text-right text-navy">
+                    <td className="px-4 py-3 text-right text-navy whitespace-nowrap">
                       {inv.investment_amount
-                        ? `${inv.investment_amount.toLocaleString("es-ES")} €`
+                        ? fmtEur(inv.investment_amount)
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right text-navy">
+                    <td className="px-4 py-3 text-right text-navy whitespace-nowrap">
                       {calcOwnership(inv) != null
-                        ? `${calcOwnership(inv)!.toFixed(2)}%`
+                        ? fmtPct(calcOwnership(inv)!)
                         : inv.ownership_pct != null
-                          ? `${inv.ownership_pct}%`
+                          ? fmtPct(inv.ownership_pct)
                           : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right text-navy">
+                    <td className="px-4 py-3 text-right text-navy whitespace-nowrap">
                       {calcShares(inv) != null
-                        ? calcShares(inv)!.toLocaleString("es-ES")
+                        ? fmtInt(calcShares(inv)!)
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       <StatusBadge status={inv.status} />
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <CopyLinkButton token={inv.token} />
-                    </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <CopyLinkButton token={inv.token} />
                         <Link
                           href={`/admin/promotions/${id}/investors/${inv.id}`}
-                          className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-navy hover:text-navy"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-navy hover:text-navy whitespace-nowrap"
                         >
                           Ver detalle
                         </Link>
