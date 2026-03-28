@@ -288,7 +288,7 @@ def numero_a_texto(n: float) -> str:
     return " ".join(parts)
 
 
-def build_protocol_json(datos_llm: dict, investment_amount: float) -> dict[str, Any]:
+def build_protocol_json(datos_llm: dict, investment_amount: float, promotion_settings: dict | None = None) -> dict[str, Any]:
     """Build the full protocol JSON from LLM-extracted data + investment amount."""
     ds = datos_llm.get("datos_societarios", {})
     dc = datos_llm.get("datos_constitucion", {})
@@ -310,8 +310,10 @@ def build_protocol_json(datos_llm: dict, investment_amount: float) -> dict[str, 
     if domicilio.get("complemento"):
         calle += f", {domicilio['complemento']}"
 
-    tramo_30 = investment_amount * 0.30
-    tramo_70 = investment_amount * 0.70
+    first_pct_raw = (promotion_settings or {}).get("first_disbursement_pct", 30)
+    second_pct_raw = (promotion_settings or {}).get("second_disbursement_pct", 70)
+    tramo_primero = investment_amount * first_pct_raw / 100
+    tramo_segundo = investment_amount * second_pct_raw / 100
 
     return {
         "metadata": {
@@ -343,10 +345,12 @@ def build_protocol_json(datos_llm: dict, investment_amount: float) -> dict[str, 
                 "total": investment_amount,
                 "total_texto": numero_a_texto(investment_amount),
                 "moneda": "EUR",
-                "tramo_30_porciento": tramo_30,
-                "tramo_30_texto": numero_a_texto(tramo_30),
-                "tramo_70_porciento": tramo_70,
-                "tramo_70_texto": numero_a_texto(tramo_70),
+                "primer_desembolso_pct": first_pct_raw,
+                "primer_desembolso": tramo_primero,
+                "primer_desembolso_texto": numero_a_texto(tramo_primero),
+                "segundo_desembolso_pct": second_pct_raw,
+                "segundo_desembolso": tramo_segundo,
+                "segundo_desembolso_texto": numero_a_texto(tramo_segundo),
             },
         },
     }

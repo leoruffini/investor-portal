@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 
 # --- Enums ---
@@ -23,11 +23,30 @@ class DocType(str, Enum):
     otro = "otro"
 
 
+# --- Promotion Settings ---
+
+class PromotionSettings(BaseModel):
+    total_investment: float | None = None
+    total_shares: int | None = None
+    first_disbursement_pct: float | None = None
+    second_disbursement_pct: float | None = None
+
+    @model_validator(mode="after")
+    def check_disbursement_sum(self):
+        first = self.first_disbursement_pct
+        second = self.second_disbursement_pct
+        if first is not None and second is not None:
+            if abs(first + second - 100) > 0.01:
+                raise ValueError("Los porcentajes de desembolso deben sumar 100")
+        return self
+
+
 # --- Promotions ---
 
 class PromotionBase(BaseModel):
     name: str
     description: str | None = None
+    settings: PromotionSettings | None = None
 
 
 class PromotionCreate(PromotionBase):
@@ -37,6 +56,7 @@ class PromotionCreate(PromotionBase):
 class PromotionUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    settings: PromotionSettings | None = None
 
 
 class Promotion(PromotionBase):

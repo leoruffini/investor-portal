@@ -2,10 +2,18 @@ export type InvestorStatus = "pending" | "processing" | "processing_failed" | "d
 
 export type DocType = "escritura_constitucion" | "nombramiento" | "poderes" | "otro";
 
+export interface PromotionSettings {
+  total_investment: number | null;
+  total_shares: number | null;
+  first_disbursement_pct: number | null;
+  second_disbursement_pct: number | null;
+}
+
 export interface Promotion {
   id: string;
   name: string;
   description: string | null;
+  settings: PromotionSettings | null;
   created_at: string;
 }
 

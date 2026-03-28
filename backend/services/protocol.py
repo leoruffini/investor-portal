@@ -79,6 +79,13 @@ def generate_protocol(datos: dict, template_path: Path | None = None) -> bytes:
     inv = datos["campos_protocolo_inversion"]["inversor"]
     imp = datos["campos_protocolo_inversion"]["importe_inversion"]
 
+    # Format amounts for display
+    primer_cifra = f"{imp['primer_desembolso']:,.0f}".replace(",", ".")
+    segundo_cifra = f"{imp['segundo_desembolso']:,.0f}".replace(",", ".")
+    total_cifra = f"{imp['total']:,.0f}".replace(",", ".")
+    primer_pct = int(imp["primer_desembolso_pct"]) if imp["primer_desembolso_pct"] == int(imp["primer_desembolso_pct"]) else imp["primer_desembolso_pct"]
+    segundo_pct = int(imp["segundo_desembolso_pct"]) if imp["segundo_desembolso_pct"] == int(imp["segundo_desembolso_pct"]) else imp["segundo_desembolso_pct"]
+
     # --- Investor paragraph values ---
     inversor_parrafo_values = [
         inv["sr_representante"], inv["denominacion_sociedad"],
@@ -134,26 +141,27 @@ def generate_protocol(datos: dict, template_path: Path | None = None) -> bytes:
                 _reemplazar_secuencial(para, inversor_asegura_values)
 
     # --- Fill investment amounts in paragraphs ---
+    # Build dynamic percentage strings for matching (e.g., "30%", "50%")
+    first_pct_str = f"{primer_pct}%"
+    second_pct_str = f"{segundo_pct}%"
+
     for para in doc.paragraphs:
         text = para.text
 
         if "la sociedad" in text and "el Inversor" in text and "aportación de" in text:
             _reemplazar_secuencial(para, [
                 inv["denominacion_sociedad"], "[Nombre del Proyecto]",
-                imp["total_texto"],
-                f"{imp['total']:,.0f}".replace(",", "."),
+                imp["total_texto"], total_cifra,
             ])
 
-        if "equivalente al 30%" in text:
+        if f"equivalente al {first_pct_str}" in text and "segunda" not in text.lower():
             _reemplazar_secuencial(para, [
-                imp["tramo_30_texto"],
-                f"{imp['tramo_30_porciento']:,.0f}".replace(",", "."),
+                imp["primer_desembolso_texto"], primer_cifra,
             ])
 
-        if "equivalente al 70%" in text and "segunda Nota Convertible" in text:
+        if f"equivalente al {second_pct_str}" in text and "segunda" in text.lower():
             _reemplazar_secuencial(para, [
-                imp["tramo_70_texto"],
-                f"{imp['tramo_70_porciento']:,.0f}".replace(",", "."),
+                imp["segundo_desembolso_texto"], segundo_cifra,
             ])
 
     # --- Fill investment amounts in tables ---
@@ -166,16 +174,14 @@ def generate_protocol(datos: dict, template_path: Path | None = None) -> bytes:
                    "desembolsa en este acto" in cell_lower:
                     for paragraph in cell.paragraphs:
                         _reemplazar_importe_en_parrafo(
-                            paragraph, imp["tramo_30_texto"],
-                            f"{imp['tramo_30_porciento']:,.0f}".replace(",", "."),
+                            paragraph, imp["primer_desembolso_texto"], primer_cifra,
                         )
 
                 if ("segunda aportación" in cell_lower or "incumplimiento" in cell_lower) \
-                   and "70%" in cell.text:
+                   and second_pct_str in cell.text:
                     for paragraph in cell.paragraphs:
                         _reemplazar_importe_en_parrafo(
-                            paragraph, imp["tramo_70_texto"],
-                            f"{imp['tramo_70_porciento']:,.0f}".replace(",", "."),
+                            paragraph, imp["segundo_desembolso_texto"], segundo_cifra,
                         )
 
     # Return as bytes

@@ -37,8 +37,12 @@ async def generate_protocol_endpoint(investor_id: UUID):
     if not kyc.get("confirmed"):
         raise HTTPException(status_code=400, detail="Los datos KYC aún no han sido confirmados")
 
+    # Get promotion settings for disbursement percentages
+    promo_result = supabase.table("promotions").select("settings").eq("id", investor["promotion_id"]).execute()
+    promotion_settings = promo_result.data[0].get("settings") if promo_result.data else None
+
     # Build protocol JSON and generate Word
-    protocol_data = build_protocol_json(kyc["extracted_json"], investor["investment_amount"])
+    protocol_data = build_protocol_json(kyc["extracted_json"], investor["investment_amount"], promotion_settings)
     docx_bytes = generate_protocol(protocol_data)
 
     # Upload to Supabase Storage
