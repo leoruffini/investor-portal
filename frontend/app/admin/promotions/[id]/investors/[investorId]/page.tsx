@@ -163,14 +163,16 @@ export default function InvestorDetailPage({
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Inversión</p>
               <p className="mt-0.5 text-sm text-navy">
                 {investor.investment_amount
-                  ? `${investor.investment_amount.toLocaleString("es-ES")} €`
+                  ? investor.investment_amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"
                   : "—"}
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Participación</p>
               <p className="mt-0.5 text-sm text-navy">
-                {investor.ownership_pct != null ? `${investor.ownership_pct}%` : "—"}
+                {investor.ownership_pct != null
+                  ? investor.ownership_pct.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%"
+                  : "—"}
               </p>
             </div>
             <div>
