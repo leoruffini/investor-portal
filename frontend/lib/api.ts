@@ -41,6 +41,18 @@ export async function pollKycData(
   for (let i = 0; i < maxAttempts; i++) {
     const data = await getKycData(investorId);
     if (data) return data;
+
+    // Check if processing failed so we can stop early
+    try {
+      const investor = await apiFetch<Investor>(`/investors/${investorId}`);
+      if (investor.status === "processing_failed") {
+        throw new Error("Error al procesar los documentos. Por favor, inténtelo de nuevo o contacte con soporte.");
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Error al procesar")) throw err;
+      // If investor fetch fails, continue polling
+    }
+
     await new Promise((r) => setTimeout(r, intervalMs));
   }
   throw new Error("El procesamiento está tardando más de lo esperado. Recargue la página para ver si sus datos están listos.");

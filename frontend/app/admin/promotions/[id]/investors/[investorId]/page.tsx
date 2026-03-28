@@ -219,7 +219,7 @@ export default function InvestorDetailPage({
           )}
 
           {/* Upload on behalf */}
-          {(investor.status === "pending" || investor.status === "docs_uploaded") && (
+          {(investor.status === "pending" || investor.status === "docs_uploaded" || investor.status === "processing_failed") && (
             <div>
               <p className="mb-2 text-sm font-medium text-navy">
                 Subir documentos en nombre del inversor
