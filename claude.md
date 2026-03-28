@@ -48,7 +48,7 @@ Original Streamlit prototype (`app.py`) is kept as reference only.
   - All data endpoints require `X-API-Key` header matching `BACKEND_API_KEY`; if key is not set in prod, endpoints return 503
   - All path parameters (IDs) are validated as UUIDs; invalid values return 422
   - Starter tier includes: zero downtime deploys, SSH, scaling, one-off jobs, persistent disks
-- Frontend: Vercel → `https://investor-portal-eosin-ten.vercel.app`
+- Frontend: Vercel → `https://provalix-investors.vercel.app`
   - Env vars: `NEXT_PUBLIC_API_URL`, `ADMIN_PASSWORD`, `NEXT_PUBLIC_API_KEY` (must match `BACKEND_API_KEY`)
 - DB: Supabase Cloud (`rwblntkhdwsfcmrtxiia`)
 
