@@ -36,7 +36,7 @@ export async function uploadDocs(investorId: string, files: File[]): Promise<{ s
 
 export async function pollKycData(
   investorId: string,
-  { intervalMs = 3000, maxAttempts = 60 } = {}
+  { intervalMs = 3000, maxAttempts = 120 } = {}
 ): Promise<KycData> {
   for (let i = 0; i < maxAttempts; i++) {
     const data = await getKycData(investorId);
