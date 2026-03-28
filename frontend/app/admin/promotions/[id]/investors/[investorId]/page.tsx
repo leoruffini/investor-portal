@@ -20,6 +20,8 @@ import { CopyLinkButton } from "@/components/copy-link-button";
 import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
 import { KycReviewForm, KycReviewFormHandle } from "@/components/kyc-review-form";
+import { ProcessingStep } from "@/components/processing-steps";
+import { ProcessingProgress } from "@/components/processing-progress";
 
 export default function InvestorDetailPage({
   params,
@@ -37,6 +39,9 @@ export default function InvestorDetailPage({
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
+  const [progressPct, setProgressPct] = useState(0);
+  const [progressText, setProgressText] = useState("");
 
   // KYC confirm state
   const [confirming, setConfirming] = useState(false);
@@ -72,9 +77,45 @@ export default function InvestorDetailPage({
     setUploading(true);
     setUploadError("");
 
+    const steps: ProcessingStep[] = [
+      { label: "Guardando documentos…", state: "active" },
+      { label: "Extrayendo texto de los PDFs…", state: "pending" },
+      { label: "Analizando documentos con IA…", state: "pending" },
+      { label: "Preparando formulario…", state: "pending" },
+    ];
+    setProcessingSteps([...steps]);
+    setProgressPct(10);
+    setProgressText("Guardando documentos…");
+
+    const advanceStep = (idx: number, text: string, pct: number) => {
+      steps.forEach((s, i) => {
+        if (i < idx) s.state = "done";
+        else if (i === idx) s.state = "active";
+        else s.state = "pending";
+      });
+      setProcessingSteps([...steps]);
+      setProgressPct(pct);
+      setProgressText(text);
+    };
+
     try {
       await uploadDocs(investorId, files);
+      advanceStep(1, "Extrayendo texto de los PDFs…", 20);
+      advanceStep(1, "Extrayendo texto de los PDFs…", 30);
+
       const result = await pollKycData(investorId);
+
+      advanceStep(2, "Analizando documentos con IA…", 75);
+      await new Promise((r) => setTimeout(r, 400));
+
+      advanceStep(3, "Preparando formulario…", 95);
+      await new Promise((r) => setTimeout(r, 300));
+
+      steps.forEach((s) => (s.state = "done"));
+      setProcessingSteps([...steps]);
+      setProgressPct(100);
+      setProgressText("Listo");
+
       setKycData(result);
       setFiles([]);
       await load();
@@ -84,6 +125,8 @@ export default function InvestorDetailPage({
       );
     } finally {
       setUploading(false);
+      setProcessingSteps([]);
+      setProgressPct(0);
     }
   };
 
@@ -223,36 +266,47 @@ export default function InvestorDetailPage({
           {/* Upload on behalf */}
           {(investor.status === "pending" || investor.status === "docs_uploaded" || investor.status === "processing_failed") && (
             <div>
-              <p className="mb-2 text-sm font-medium text-navy">
-                Subir documentos en nombre del inversor
-              </p>
-              <FileDropzone
-                onFilesSelected={(newFiles) =>
-                  setFiles((prev) => [...prev, ...newFiles])
-                }
-                disabled={uploading}
-              />
-              {files.length > 0 && (
+              {uploading && processingSteps.length > 0 ? (
+                <ProcessingProgress
+                  steps={processingSteps}
+                  progressPct={progressPct}
+                  progressText={progressText}
+                  files={files}
+                />
+              ) : (
                 <>
-                  <div className="mt-3">
-                    <FileList
-                      files={files}
-                      onRemove={(i) =>
-                        setFiles((prev) => prev.filter((_, idx) => idx !== i))
-                      }
-                    />
-                  </div>
-                  <Button
-                    onClick={handleUpload}
+                  <p className="mb-2 text-sm font-medium text-navy">
+                    Subir documentos en nombre del inversor
+                  </p>
+                  <FileDropzone
+                    onFilesSelected={(newFiles) =>
+                      setFiles((prev) => [...prev, ...newFiles])
+                    }
                     disabled={uploading}
-                    className="mt-3 bg-navy hover:bg-navy/90"
-                  >
-                    {uploading ? "Procesando..." : "Procesar documentos"}
-                  </Button>
+                  />
+                  {files.length > 0 && (
+                    <>
+                      <div className="mt-3">
+                        <FileList
+                          files={files}
+                          onRemove={(i) =>
+                            setFiles((prev) => prev.filter((_, idx) => idx !== i))
+                          }
+                        />
+                      </div>
+                      <Button
+                        onClick={handleUpload}
+                        disabled={uploading}
+                        className="mt-3 bg-navy hover:bg-navy/90"
+                      >
+                        Procesar documentos
+                      </Button>
+                    </>
+                  )}
+                  {uploadError && (
+                    <p className="mt-2 text-sm text-destructive">{uploadError}</p>
+                  )}
                 </>
-              )}
-              {uploadError && (
-                <p className="mt-2 text-sm text-destructive">{uploadError}</p>
               )}
             </div>
           )}
