@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, use } from "react";
 import Link from "next/link";
 import {
   getInvestor,
+  getPromotion,
   getKycData,
   getDocuments,
   downloadDocument,
@@ -12,7 +13,7 @@ import {
   confirmKycData,
   generateProtocol,
 } from "@/lib/api";
-import { Investor, KycData, Document } from "@/lib/types";
+import { Investor, Promotion, KycData, Document } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
@@ -31,6 +32,7 @@ export default function InvestorDetailPage({
   const { id: promotionId, investorId } = use(params);
 
   const [investor, setInvestor] = useState<Investor | null>(null);
+  const [promotion, setPromotion] = useState<Promotion | null>(null);
   const [kycData, setKycData] = useState<KycData | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,12 +54,14 @@ export default function InvestorDetailPage({
 
   const load = async () => {
     try {
-      const [inv, kyc, docs] = await Promise.all([
+      const [inv, promo, kyc, docs] = await Promise.all([
         getInvestor(investorId),
+        getPromotion(promotionId),
         getKycData(investorId),
         getDocuments(investorId),
       ]);
       setInvestor(inv);
+      setPromotion(promo);
       setKycData(kyc);
       setDocuments(docs);
     } catch (err) {
@@ -197,7 +201,7 @@ export default function InvestorDetailPage({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Email</p>
               <p className="mt-0.5 text-sm text-navy">{investor.email}</p>
@@ -211,11 +215,30 @@ export default function InvestorDetailPage({
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Participación</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">% Participación</p>
               <p className="mt-0.5 text-sm text-navy">
-                {investor.ownership_pct != null
-                  ? investor.ownership_pct.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%"
-                  : "—"}
+                {(() => {
+                  const s = promotion?.settings;
+                  if (investor.investment_amount && s?.total_investment) {
+                    return (investor.investment_amount / s.total_investment * 100).toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
+                  }
+                  if (investor.ownership_pct != null) {
+                    return investor.ownership_pct.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
+                  }
+                  return "—";
+                })()}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Participaciones</p>
+              <p className="mt-0.5 text-sm text-navy">
+                {(() => {
+                  const s = promotion?.settings;
+                  if (investor.investment_amount && s?.total_investment && s?.total_shares) {
+                    return Math.round((investor.investment_amount / s.total_investment) * s.total_shares).toLocaleString("es-ES");
+                  }
+                  return "—";
+                })()}
               </p>
             </div>
             <div>
