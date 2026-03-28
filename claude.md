@@ -59,7 +59,7 @@ promotions
   - id, name, description, created_at
 
 investors
-  - id, promotion_id (FK), name, email, investment_amount, ownership_pct, status (pending/docs_uploaded/data_confirmed/complete), token (for personalized link), created_at
+  - id, promotion_id (FK), name, email, investment_amount, ownership_pct, status (pending/processing/processing_failed/docs_uploaded/data_confirmed/complete), token (for personalized link), created_at
 
 documents
   - id, investor_id (FK), filename, storage_path, doc_type (escritura_constitucion/nombramiento/poderes/otro), uploaded_at
@@ -74,7 +74,7 @@ kyc_data
 2. System generates a unique link per investor (signed token or magic link)
 3. **First promotion**: Provalix uploads docs on behalf of investors (testing, avoids GDPR issues)
 4. **Subsequent promotions**: each investor enters via their link and uploads their own docs
-5. Backend processes PDFs → LLM extracts data → JSON saved to `kyc_data`
+5. Backend processes PDFs in a **background task** (OCR + LLM, takes 3–6 min) → JSON saved to `kyc_data`. Status goes: `pending` → `processing` → `docs_uploaded`. On failure: `processing_failed`.
 6. Investor (or Provalix) reviews and confirms data in a form
 7. When all investors are `complete`, the Investment Protocol (Word) is generated
 8. Provalix has a back office with per-investor status view
@@ -140,6 +140,8 @@ investor-portal/
 │   ├── components/              # Shared UI (StatusBadge, CopyLinkButton, etc.)
 │   ├── lib/api.ts               # Backend API client
 │   └── middleware.ts            # Auth guard for /admin/*
+├── supabase/
+│   └── migrations/              # DB migrations (apply with `supabase db push`)
 ├── scripts/                     # original code (reference)
 │   ├── agente_inversor.py
 │   ├── rellenar_protocolo.py
@@ -168,6 +170,10 @@ uvicorn main:app --reload          # runs on :8000
 cd frontend
 npm run dev                        # runs on :3000
 
+# DB migrations (run from repo root, must be linked: supabase link --project-ref rwblntkhdwsfcmrtxiia)
+supabase migration new <name>      # create new migration
+supabase db push                   # apply pending migrations to production
+
 # Original Streamlit prototype (reference only)
 source venv/bin/activate
 streamlit run app.py
@@ -193,3 +199,5 @@ git checkout main
 - **LLM provider is configurable**: support both Anthropic and OpenAI (env var LLM_PROVIDER)
 - **PDFs can be scanned**: the current pipeline handles OCR with tesseract. Keep that capability.
 - **Keep things simple**: this is a small internal tool for ~15 investors per promotion. Do not over-engineer.
+- **DB schema changes**: always add a migration in `supabase/migrations/` and run `supabase db push`. If adding new values to a CHECK constraint, also update the Python enum in `backend/models/schemas.py`.
+- **DELETE endpoints**: return `200 + JSON body` (not 204). Cloudflare adds `Content-Encoding: br` to empty responses, which causes browsers to abort the fetch.
