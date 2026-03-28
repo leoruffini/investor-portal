@@ -23,7 +23,6 @@ export default function NewInvestorPage({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [amount, setAmount] = useState("");
-  const [pct, setPct] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,7 +42,6 @@ export default function NewInvestorPage({
         email,
         promotion_id: promotionId,
         investment_amount: amount ? parseFloat(amount) : undefined,
-        ownership_pct: pct ? parseFloat(pct) : undefined,
       });
       router.push(`/admin/promotions/${promotionId}`);
     } catch (err) {
@@ -72,7 +70,7 @@ export default function NewInvestorPage({
         continue;
       }
 
-      const [invName, invEmail, invAmount, invPct] = parts;
+      const [invName, invEmail, invAmount] = parts;
 
       try {
         await createInvestor({
@@ -80,7 +78,6 @@ export default function NewInvestorPage({
           email: invEmail,
           promotion_id: promotionId,
           investment_amount: invAmount ? parseFloat(invAmount) : undefined,
-          ownership_pct: invPct ? parseFloat(invPct) : undefined,
         });
         created++;
       } catch {
@@ -153,18 +150,6 @@ export default function NewInvestorPage({
                       className="mt-1"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="pct">% Participación</Label>
-                    <Input
-                      id="pct"
-                      type="number"
-                      step="0.01"
-                      value={pct}
-                      onChange={(e) => setPct(e.target.value)}
-                      placeholder="8.5"
-                      className="mt-1"
-                    />
-                  </div>
                 </div>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
@@ -195,14 +180,14 @@ export default function NewInvestorPage({
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Formato: <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">nombre, email, importe, porcentaje</code>
+                Formato: <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">nombre, email, importe</code>
                 <br />
                 Separador: coma, punto y coma, o tabulador. Una línea por inversor.
               </p>
               <Textarea
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
-                placeholder={`Inversiones Levante S.L., admin@levante.com, 500000, 8.5\nGrupo Mediterráneo S.A., info@grupomed.com, 300000, 5.1`}
+                placeholder={`Inversiones Levante S.L., admin@levante.com, 500000\nGrupo Mediterráneo S.A., info@grupomed.com, 300000`}
                 rows={8}
                 className="font-mono text-sm"
               />
