@@ -1,4 +1,4 @@
-import { Investor, Promotion, KycData, Document } from "./types";
+import { Investor, Promotion, PromotionSettings, KycData, Document } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -120,7 +120,7 @@ export async function createPromotion(data: {
 
 export async function updatePromotion(
   promotionId: string,
-  data: { name?: string; description?: string }
+  data: { name?: string; description?: string; settings?: PromotionSettings }
 ): Promise<Promotion> {
   return apiFetch<Promotion>(`/promotions/${promotionId}`, {
     method: "PATCH",

@@ -8,9 +8,11 @@ import {
   deleteInvestor,
   generateProtocol,
 } from "@/lib/api";
-import { Promotion, Investor } from "@/lib/types";
+import { Promotion, Investor, PromotionSettings } from "@/lib/types";
+import { updatePromotion } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ChevronDown } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { CopyLinkButton } from "@/components/copy-link-button";
 
@@ -24,6 +26,15 @@ export default function PromotionDetailPage({
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<PromotionSettings>({
+    total_investment: null,
+    total_shares: null,
+    first_disbursement_pct: null,
+    second_disbursement_pct: null,
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
 
   const load = async () => {
     try {
@@ -33,6 +44,9 @@ export default function PromotionDetailPage({
       ]);
       setPromotion(promo);
       setInvestors(invs);
+      if (promo.settings) {
+        setSettings(promo.settings);
+      }
     } catch (err) {
       console.error("Error loading promotion:", err);
     } finally {
@@ -76,6 +90,43 @@ export default function PromotionDetailPage({
     } finally {
       setGeneratingAll(false);
     }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const updated = await updatePromotion(id, { settings });
+      setPromotion(updated);
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 2000);
+    } catch (err) {
+      console.error("Error saving settings:", err);
+      alert("Error al guardar las variables");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const updateSetting = (key: keyof PromotionSettings, value: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      [key]: value === "" ? null : key === "total_shares" ? parseInt(value, 10) : parseFloat(value),
+    }));
+  };
+
+  const disbursementWarning =
+    settings.first_disbursement_pct != null &&
+    settings.second_disbursement_pct != null &&
+    Math.abs(settings.first_disbursement_pct + settings.second_disbursement_pct - 100) > 0.01;
+
+  const calcOwnership = (inv: Investor) => {
+    if (!inv.investment_amount || !settings.total_investment) return null;
+    return (inv.investment_amount / settings.total_investment) * 100;
+  };
+
+  const calcShares = (inv: Investor) => {
+    if (!inv.investment_amount || !settings.total_investment || !settings.total_shares) return null;
+    return Math.round((inv.investment_amount / settings.total_investment) * settings.total_shares);
   };
 
   if (loading) {
@@ -162,6 +213,104 @@ export default function PromotionDetailPage({
         ))}
       </div>
 
+      {/* Promotion settings */}
+      <Card className="mb-6">
+        <button
+          onClick={() => setSettingsOpen(!settingsOpen)}
+          className="flex w-full items-center justify-between px-4 py-3 text-left"
+        >
+          <span className="text-sm font-semibold text-navy">
+            Variables de la promoción
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-gray-400 transition-transform ${settingsOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+        {settingsOpen && (
+          <CardContent className="border-t pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Inversión total (€)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={settings.total_investment ?? ""}
+                  onChange={(e) => updateSetting("total_investment", e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Participaciones totales
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={settings.total_shares ?? ""}
+                  onChange={(e) => updateSetting("total_shares", e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  % primer desembolso
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="any"
+                  value={settings.first_disbursement_pct ?? ""}
+                  onChange={(e) => updateSetting("first_disbursement_pct", e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
+                  placeholder="30"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  % segundo desembolso
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="any"
+                  value={settings.second_disbursement_pct ?? ""}
+                  onChange={(e) => updateSetting("second_disbursement_pct", e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal focus:outline-none focus:ring-1 focus:ring-teal"
+                  placeholder="70"
+                />
+              </div>
+            </div>
+            {disbursementWarning && (
+              <p className="mt-3 text-xs text-red-500">
+                Los porcentajes de desembolso deben sumar 100% (actual:{" "}
+                {(settings.first_disbursement_pct! + settings.second_disbursement_pct!).toFixed(1)}%)
+              </p>
+            )}
+            <div className="mt-4 flex items-center gap-3">
+              <Button
+                onClick={handleSaveSettings}
+                disabled={savingSettings || disbursementWarning}
+                className="bg-navy hover:bg-navy/90"
+                size="sm"
+              >
+                {savingSettings ? "Guardando..." : "Guardar"}
+              </Button>
+              {settingsSaved && (
+                <span className="text-xs text-emerald-600">Guardado</span>
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       {allComplete && investors.length > 0 && (
         <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           Todos los inversores han completado el proceso.
@@ -200,6 +349,9 @@ export default function PromotionDetailPage({
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
                     %
                   </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    Participaciones
+                  </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-400">
                     Estado
                   </th>
@@ -229,8 +381,15 @@ export default function PromotionDetailPage({
                         : "—"}
                     </td>
                     <td className="px-4 py-3 text-right text-navy">
-                      {inv.ownership_pct != null
-                        ? `${inv.ownership_pct}%`
+                      {calcOwnership(inv) != null
+                        ? `${calcOwnership(inv)!.toFixed(2)}%`
+                        : inv.ownership_pct != null
+                          ? `${inv.ownership_pct}%`
+                          : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right text-navy">
+                      {calcShares(inv) != null
+                        ? calcShares(inv)!.toLocaleString("es-ES")
                         : "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
