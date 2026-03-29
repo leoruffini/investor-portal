@@ -437,7 +437,7 @@ export default function PromotionDetailPage({
                     </td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
-                        <CopyLinkButton token={inv.token} />
+                        {inv.status !== "complete" && <CopyLinkButton token={inv.token} />}
                         <Link
                           href={`/admin/promotions/${id}/investors/${inv.id}`}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-navy hover:text-navy whitespace-nowrap"
