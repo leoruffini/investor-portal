@@ -35,14 +35,9 @@ export default function AdminLayout({
         }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/admin">
-              <ProvalixLogo className="h-6 w-auto" />
-            </Link>
-            <span className="rounded border border-teal/35 px-3 py-1 text-[0.65rem] font-medium uppercase tracking-widest text-teal">
-              Back Office
-            </span>
-          </div>
+          <Link href="/admin" className="flex items-center">
+            <ProvalixLogo className="h-6 w-auto" />
+          </Link>
 
           <nav className="flex items-center gap-6">
             <Link

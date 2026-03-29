@@ -10,6 +10,16 @@ import { Button } from "@/components/ui/button";
 interface PromotionWithStats extends Promotion {
   investorCount: number;
   completeCount: number;
+  pendingCount: number;
+}
+
+function formatDateES(dateStr: string): string {
+  const months = [
+    "ene", "feb", "mar", "abr", "may", "jun",
+    "jul", "ago", "sep", "oct", "nov", "dic",
+  ];
+  const d = new Date(dateStr);
+  return `Creada el ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export default function AdminDashboardPage() {
@@ -23,10 +33,12 @@ export default function AdminDashboardPage() {
         const withStats = await Promise.all(
           promos.map(async (p) => {
             const investors = await getInvestorsByPromotion(p.id);
+            const completeCount = investors.filter((i: Investor) => i.status === "complete").length;
             return {
               ...p,
               investorCount: investors.length,
-              completeCount: investors.filter((i: Investor) => i.status === "complete").length,
+              completeCount,
+              pendingCount: investors.length - completeCount,
             };
           })
         );
@@ -42,7 +54,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-heading text-2xl font-semibold text-navy">
             Promociones
@@ -63,40 +75,76 @@ export default function AdminDashboardPage() {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-navy border-t-transparent" />
         </div>
       ) : promotions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No hay promociones todavía.
-            </p>
-            <Link href="/admin/promotions/new">
-              <Button className="mt-4 bg-navy hover:bg-navy/90">
-                Crear primera promoción
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="rounded-full bg-gray-100 p-4 mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-10 w-10 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 7.5h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+              />
+            </svg>
+          </div>
+          <h2 className="font-heading text-lg font-semibold text-navy">
+            Sin promociones
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+            Crea tu primera promoción para empezar a gestionar inversores y documentación.
+          </p>
+          <Link href="/admin/promotions/new">
+            <Button className="mt-6 bg-navy hover:bg-navy/90">
+              + Nueva promoción
+            </Button>
+          </Link>
+        </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {promotions.map((p) => (
             <Link key={p.id} href={`/admin/promotions/${p.id}`}>
-              <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
-                <CardHeader>
-                  <CardTitle>{p.name}</CardTitle>
+              <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full group">
+                <CardHeader className="pb-3">
+                  <CardTitle className="group-hover:text-teal transition-colors">
+                    {p.name}
+                  </CardTitle>
                   {p.description && (
                     <CardDescription>{p.description}</CardDescription>
                   )}
+                  {p.created_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDateES(p.created_at)}
+                    </p>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {p.investorCount} inversor{p.investorCount !== 1 ? "es" : ""}
-                    </span>
-                    <span className="text-sm font-medium text-navy">
-                      {p.completeCount}/{p.investorCount} completos
-                    </span>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="rounded-lg bg-light-bg px-3 py-2 text-center">
+                      <p className="text-xl font-bold text-navy">{p.investorCount}</p>
+                      <p className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+                        Total
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-teal/10 px-3 py-2 text-center">
+                      <p className="text-xl font-bold text-teal">{p.completeCount}</p>
+                      <p className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+                        Completos
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-amber-50 px-3 py-2 text-center">
+                      <p className="text-xl font-bold text-amber-600">{p.pendingCount}</p>
+                      <p className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+                        Pendientes
+                      </p>
+                    </div>
                   </div>
                   {p.investorCount > 0 && (
-                    <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-teal transition-all"
                         style={{
