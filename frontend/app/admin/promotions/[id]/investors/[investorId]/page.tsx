@@ -241,12 +241,14 @@ export default function InvestorDetailPage({
                 })()}
               </p>
             </div>
+            {investor.status !== "complete" && (
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Enlace portal</p>
               <div className="mt-0.5">
                 <CopyLinkButton token={investor.token} />
               </div>
             </div>
+            )}
           </div>
         </CardContent>
       </Card>
