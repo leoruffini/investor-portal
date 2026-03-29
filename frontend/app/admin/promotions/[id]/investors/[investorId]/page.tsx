@@ -354,6 +354,7 @@ export default function InvestorDetailPage({
             <KycReviewForm
               ref={kycFormRef}
               data={kycData.extracted_json}
+              readOnly={!!kycData.confirmed}
             />
             {!kycData.confirmed && (
               <Button

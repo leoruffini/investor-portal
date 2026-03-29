@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   getPromotion,
   getInvestorsByPromotion,
@@ -15,6 +16,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChevronDown } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { CopyLinkButton } from "@/components/copy-link-button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const fmtEur = (v: number) =>
   v.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -31,7 +42,9 @@ export default function PromotionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [promotion, setPromotion] = useState<Promotion | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Investor | null>(null);
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingAll, setGeneratingAll] = useState(false);
@@ -68,13 +81,15 @@ export default function PromotionDetailPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleDelete = async (inv: Investor) => {
-    if (!confirm(`¿Eliminar al inversor "${inv.name}"?`)) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteInvestor(inv.id);
-      setInvestors((prev) => prev.filter((i) => i.id !== inv.id));
+      await deleteInvestor(deleteTarget.id);
+      setInvestors((prev) => prev.filter((i) => i.id !== deleteTarget.id));
     } catch (err) {
       console.error("Error deleting investor:", err);
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -385,10 +400,17 @@ export default function PromotionDetailPage({
                 {investors.map((inv) => (
                   <tr
                     key={inv.id}
-                    className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50"
+                    onClick={() => router.push(`/admin/promotions/${id}/investors/${inv.id}`)}
+                    className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 cursor-pointer"
                   >
-                    <td className="px-4 py-3 font-medium text-navy whitespace-nowrap">
-                      {inv.name}
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">
+                      <Link
+                        href={`/admin/promotions/${id}/investors/${inv.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-navy hover:text-teal transition-colors"
+                      >
+                        {inv.name}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {inv.email}
@@ -413,7 +435,7 @@ export default function PromotionDetailPage({
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <StatusBadge status={inv.status} />
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
                         <CopyLinkButton token={inv.token} />
                         <Link
@@ -423,7 +445,7 @@ export default function PromotionDetailPage({
                           Ver detalle
                         </Link>
                         <button
-                          onClick={() => handleDelete(inv)}
+                          onClick={() => setDeleteTarget(inv)}
                           className="rounded-lg border border-gray-200 p-1.5 text-gray-400 transition-colors hover:border-red-300 hover:text-red-500"
                           title="Eliminar inversor"
                         >
@@ -440,6 +462,27 @@ export default function PromotionDetailPage({
           </div>
         </Card>
       )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar inversor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará a <span className="font-medium text-navy">{deleteTarget?.name}</span> y todos sus documentos y datos asociados. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
