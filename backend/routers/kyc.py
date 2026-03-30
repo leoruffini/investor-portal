@@ -44,7 +44,7 @@ def _infer_doc_type(filename: str) -> str:
     return "otro"
 
 
-def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes]]):
+def _process_docs_background(investor_id: str, enrollment_id: str, file_texts: list[tuple[str, bytes]]):
     """Background task: extract text from PDFs, call LLM, save results."""
     try:
         all_texts: list[str] = []
@@ -55,7 +55,7 @@ def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes
 
         if not all_texts:
             logger.error("No text extracted from any PDF for investor %s", investor_id)
-            supabase.table("investors").update({"status": "processing_failed"}).eq("id", investor_id).execute()
+            supabase.table("promotion_investors").update({"status": "processing_failed"}).eq("id", enrollment_id).execute()
             return
 
         combined_text = "\n\n".join(all_texts)
@@ -75,22 +75,28 @@ def _process_docs_background(investor_id: str, file_texts: list[tuple[str, bytes
                 "extracted_json": extracted,
             }).execute()
 
-        # Update investor status
-        supabase.table("investors").update({"status": "docs_uploaded"}).eq("id", investor_id).execute()
+        # Update enrollment status
+        supabase.table("promotion_investors").update({"status": "docs_uploaded"}).eq("id", enrollment_id).execute()
         logger.info("Background processing complete for investor %s", investor_id)
     except Exception:
         logger.exception("Background processing failed for investor %s", investor_id)
         try:
-            supabase.table("investors").update({"status": "processing_failed"}).eq("id", investor_id).execute()
+            supabase.table("promotion_investors").update({"status": "processing_failed"}).eq("id", enrollment_id).execute()
         except Exception:
-            logger.exception("Failed to update status to processing_failed for investor %s", investor_id)
+            logger.exception("Failed to update status to processing_failed for enrollment %s", enrollment_id)
 
 
 @router.post("/upload-docs/{investor_id}")
-async def upload_docs(investor_id: UUID, files: list[UploadFile], background_tasks: BackgroundTasks):
+async def upload_docs(
+    investor_id: UUID,
+    files: list[UploadFile],
+    background_tasks: BackgroundTasks,
+    enrollment_id: UUID | None = None,
+):
     """
     Receive PDFs, save to storage, then process (OCR + LLM) in background.
     Returns 202 immediately so the frontend doesn't time out.
+    enrollment_id is required to track status on the promotion_investors row.
     """
     inv_id = str(investor_id)
 
@@ -98,6 +104,21 @@ async def upload_docs(investor_id: UUID, files: list[UploadFile], background_tas
     inv = supabase.table("investors").select("id").eq("id", inv_id).execute()
     if not inv.data:
         raise HTTPException(status_code=404, detail="Inversor no encontrado")
+
+    # Verify enrollment exists and matches investor
+    enr_id: str | None = None
+    if enrollment_id:
+        enr = (
+            supabase.table("promotion_investors")
+            .select("id, investor_id")
+            .eq("id", str(enrollment_id))
+            .execute()
+        )
+        if not enr.data:
+            raise HTTPException(status_code=404, detail="Inscripción no encontrada")
+        if enr.data[0]["investor_id"] != inv_id:
+            raise HTTPException(status_code=400, detail="La inscripción no corresponde a este inversor")
+        enr_id = str(enrollment_id)
 
     # Save files to storage and read bytes for background processing
     file_texts: list[tuple[str, bytes]] = []
@@ -140,11 +161,12 @@ async def upload_docs(investor_id: UUID, files: list[UploadFile], background_tas
 
         file_texts.append((file.filename, pdf_bytes))
 
-    # Mark investor as processing before kicking off background task
-    supabase.table("investors").update({"status": "processing"}).eq("id", inv_id).execute()
+    # Mark enrollment as processing before kicking off background task
+    if enr_id:
+        supabase.table("promotion_investors").update({"status": "processing"}).eq("id", enr_id).execute()
 
     # Kick off heavy processing (OCR + LLM) in background
-    background_tasks.add_task(_process_docs_background, inv_id, file_texts)
+    background_tasks.add_task(_process_docs_background, inv_id, enr_id or "", file_texts)
 
     return JSONResponse(status_code=202, content={"status": "processing", "investor_id": inv_id})
 
@@ -162,6 +184,7 @@ async def get_kyc_data(investor_id: UUID):
 async def confirm_kyc_data(
     investor_id: UUID,
     extracted_json: Optional[dict] = Body(None),
+    enrollment_id: UUID | None = None,
 ):
     """Mark KYC data as confirmed, optionally updating the extracted JSON with investor edits."""
     inv_id = str(investor_id)
@@ -178,7 +201,8 @@ async def confirm_kyc_data(
     if not result.data:
         raise HTTPException(status_code=404, detail="Datos KYC no encontrados para este inversor")
 
-    # Update investor status
-    supabase.table("investors").update({"status": "data_confirmed"}).eq("id", inv_id).execute()
+    # Update enrollment status
+    if enrollment_id:
+        supabase.table("promotion_investors").update({"status": "data_confirmed"}).eq("id", str(enrollment_id)).execute()
 
     return result.data[0]

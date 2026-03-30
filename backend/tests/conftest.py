@@ -58,13 +58,32 @@ async def promotion(client: AsyncClient):
 
 
 @pytest.fixture
-async def investor(client: AsyncClient, promotion: dict):
-    """Create an investor (cascade-deleted with promotion)."""
+async def investor(client: AsyncClient):
+    """Create an identity-only investor and clean up after test."""
     resp = await client.post("/investors/", json={
-        "promotion_id": promotion["id"],
         "name": "Test Investor S.L.",
-        "email": "test@example.com",
+        "email": "test-fixture@example.com",
+    })
+    data = resp.json()
+    yield data
+    await client.delete(f"/investors/{data['id']}")
+
+
+@pytest.fixture
+async def enrollment(client: AsyncClient, promotion: dict):
+    """Create an enrollment (auto-creates investor) and clean up after test."""
+    resp = await client.post("/promotion-investors/", json={
+        "promotion_id": promotion["id"],
+        "name": "Enrolled Investor S.L.",
+        "email": "test-enrollment@example.com",
         "investment_amount": 240000,
         "ownership_pct": 10.0,
     })
-    return resp.json()
+    data = resp.json()
+    yield data
+    # Enrollment is cascade-deleted when promotion is deleted.
+    # Clean up the auto-created investor separately.
+    try:
+        await client.delete(f"/investors/{data['investor_id']}")
+    except Exception:
+        pass
