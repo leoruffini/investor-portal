@@ -1,11 +1,11 @@
 "use client";
 
-import { useInvestor } from "@/context/investor-context";
+import { useEnrollment } from "@/context/investor-context";
 import { StepIndicator } from "@/components/step-indicator";
 import { Button } from "@/components/ui/button";
 
 export default function CompletePage() {
-  const { investor, kycData, loading, error } = useInvestor();
+  const { enrollment, kycData, loading, error } = useEnrollment();
 
   if (loading) {
     return (
@@ -15,7 +15,7 @@ export default function CompletePage() {
     );
   }
 
-  if (error || !investor) {
+  if (error || !enrollment) {
     return (
       <div className="py-20 text-center">
         <p className="text-destructive">{error || "Inversor no encontrado"}</p>
@@ -63,7 +63,7 @@ export default function CompletePage() {
             Sociedad registrada
           </div>
           <div className="mt-1 text-[1.2rem] font-semibold text-navy">
-            {String(ds.denominacion_actual || investor.name || "—")}
+            {String(ds.denominacion_actual || enrollment.investor_name || "—")}
           </div>
         </div>
 
@@ -97,7 +97,7 @@ export default function CompletePage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            const name = String(ds.denominacion_actual || investor.name || "inversor")
+            const name = String(ds.denominacion_actual || enrollment.investor_name || "inversor")
               .replace(/\s+/g, "_")
               .toUpperCase();
             a.download = `KYC_${name}.json`;

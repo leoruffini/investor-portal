@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useInvestor } from "@/context/investor-context";
+import { useEnrollment } from "@/context/investor-context";
 import { StepIndicator } from "@/components/step-indicator";
 import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
@@ -26,7 +26,7 @@ const RECOMMENDED_DOCS = [
 ];
 
 export default function UploadPage() {
-  const { investor, loading, error: ctxError, refresh } = useInvestor();
+  const { enrollment, loading, error: ctxError, refresh } = useEnrollment();
   const router = useRouter();
   const params = useParams<{ token: string }>();
   const [files, setFiles] = useState<File[]>([]);
@@ -44,7 +44,7 @@ export default function UploadPage() {
     );
   }
 
-  if (ctxError || !investor) {
+  if (ctxError || !enrollment) {
     return (
       <div className="py-20 text-center">
         <p className="text-destructive">{ctxError || "Inversor no encontrado"}</p>
@@ -94,13 +94,13 @@ export default function UploadPage() {
       };
 
       // Step 1: Upload files (returns quickly with 202)
-      await uploadDocs(investor.id, files);
+      await uploadDocs(enrollment.investor_id, enrollment.id, files);
       advanceStep(1, "Extrayendo texto de los PDFs…", 20);
 
       // Step 2-3: Poll for KYC data (OCR + LLM runs in backend background)
       advanceStep(1, "Extrayendo texto de los PDFs…", 30);
 
-      await pollKycData(investor.id);
+      await pollKycData(enrollment.investor_id, enrollment.id);
 
       advanceStep(2, "Analizando documentos con IA…", 75);
       await new Promise((r) => setTimeout(r, 400));

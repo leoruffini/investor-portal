@@ -19,14 +19,22 @@ export interface Promotion {
 
 export interface Investor {
   id: string;
-  promotion_id: string;
   name: string;
   email: string;
+  created_at: string;
+}
+
+export interface PromotionInvestor {
+  id: string;
+  promotion_id: string;
+  investor_id: string;
   investment_amount: number | null;
   ownership_pct: number | null;
   status: InvestorStatus;
   token: string;
   created_at: string;
+  investor_name: string;
+  investor_email: string;
 }
 
 export interface Document {

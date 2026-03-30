@@ -56,37 +56,89 @@ Original Streamlit prototype (`app.py`) is kept as reference only.
 
 ```
 promotions
-  - id, name, description, created_at
+  - id, name, description, settings (JSONB), created_at
 
-investors
-  - id, promotion_id (FK), name, email, investment_amount, ownership_pct, status (pending/processing/processing_failed/docs_uploaded/data_confirmed/complete), token (for personalized link), created_at
+investors  (identity only — reusable across promotions)
+  - id, name, email (UNIQUE), created_at
 
-documents
-  - id, investor_id (FK), filename, storage_path, doc_type (escritura_constitucion/nombramiento/poderes/otro), uploaded_at
+promotion_investors  (per-promotion enrollment)
+  - id, promotion_id (FK → promotions, CASCADE), investor_id (FK → investors, CASCADE),
+    investment_amount, ownership_pct,
+    status (pending/processing/processing_failed/docs_uploaded/data_confirmed/complete),
+    token (UNIQUE, for personalized link), created_at
+  - UNIQUE(promotion_id, investor_id)
 
-kyc_data
-  - id, investor_id (FK), extracted_json (JSONB), confirmed (boolean), confirmed_at
+documents  (linked to investor identity, reusable)
+  - id, investor_id (FK → investors, CASCADE), filename, storage_path,
+    doc_type (escritura_constitucion/nombramiento/poderes/otro), uploaded_at
+
+kyc_data  (linked to investor identity, reusable)
+  - id, investor_id (FK → investors, CASCADE), extracted_json (JSONB), confirmed (boolean), confirmed_at
 ```
+
+### Key schema decisions
+- **Investors are identity-only**: name + email. No promotion-specific data.
+- **promotion_investors** is the join/enrollment table holding per-promotion data (amount, %, status, token).
+- **documents and kyc_data** stay linked to `investors.id` — they belong to the investor identity and are reusable across promotions.
+- **Portal token** lives on `promotion_investors`, not `investors`.
+- **POST /promotion-investors/** does find-or-create by email: if an investor with that email already exists, reuses the identity; otherwise creates a new investor record.
 
 ## Full flow
 
-1. **Provalix** creates a promotion and adds investors (name, email, amount, %)
-2. System generates a unique link per investor (signed token or magic link)
+1. **Provalix** creates a promotion and enrolls investors via POST /promotion-investors/ (name, email, amount, %)
+2. System generates a unique portal link per enrollment (token on `promotion_investors`)
 3. **First promotion**: Provalix uploads docs on behalf of investors (testing, avoids GDPR issues)
-4. **Subsequent promotions**: each investor enters via their link and uploads their own docs
-5. Backend processes PDFs in a **background task** (OCR + LLM, takes 3–6 min) → JSON saved to `kyc_data`. Status goes: `pending` → `processing` → `docs_uploaded`. On failure: `processing_failed`.
-6. Investor (or Provalix) reviews and confirms data in a form
-7. When all investors are `complete`, the Investment Protocol (Word) is generated
-8. Provalix has a back office with per-investor status view
+4. **Subsequent promotions**: each investor enters via their link (`/portal/{token}`) and uploads their own docs
+5. Frontend resolves token → enrollment (GET /promotion-investors/?token=X) → gets `investor_id` + `enrollment_id`
+6. Backend processes PDFs in a **background task** (OCR + LLM, takes 3–6 min) → JSON saved to `kyc_data`. Enrollment status goes: `pending` → `processing` → `docs_uploaded`. On failure: `processing_failed`.
+7. Investor (or Provalix) reviews and confirms data in a form (PATCH /kyc/kyc-data/{investor_id}/confirm?enrollment_id=X)
+8. When confirmed, protocol is generated (POST /protocol/generate/{enrollment_id}) → enrollment status → `complete`
+9. Provalix has a back office with per-enrollment status view
+
+### API endpoint summary
+
+**Promotions** (`/promotions`)
+- `GET /` — list all
+- `GET /{id}` — get one
+- `POST /` — create
+- `PATCH /{id}` — update
+- `DELETE /{id}` — delete
+
+**Investors** (`/investors`) — identity only
+- `GET /` — list (optional `?email=`)
+- `GET /{id}` — get one
+- `POST /` — create (name, email)
+- `PATCH /{id}` — update (name, email)
+- `DELETE /{id}` — delete
+
+**Promotion-Investors** (`/promotion-investors`) — enrollments
+- `GET /` — list (`?promotion_id=` or `?token=`), returns enriched with investor name/email
+- `GET /{id}` — get one (enriched)
+- `POST /` — create enrollment (find-or-create investor by email). 409 on duplicate.
+- `PATCH /{id}` — update (investment_amount, ownership_pct, status)
+- `DELETE /{id}` — delete
+
+**Documents** (`/documents`) — linked to investor_id
+- `POST /{investor_id}` — upload
+- `GET /{investor_id}` — list
+- `GET /{investor_id}/download/{document_id}` — download
+
+**KYC** (`/kyc`)
+- `POST /upload-docs/{investor_id}?enrollment_id=X` — upload + process (202, background)
+- `GET /kyc-data/{investor_id}` — get extracted data
+- `PATCH /kyc-data/{investor_id}/confirm?enrollment_id=X` — confirm (updates enrollment status)
+
+**Protocol** (`/protocol`)
+- `POST /generate/{enrollment_id}` — generate Word doc (updates enrollment status to complete)
 
 ## Development phases
 
 ### Phase 1: `feature/api-backend` ✅ COMPLETE (merged to main)
 Set up FastAPI + Supabase + migrate existing Python logic.
 - FastAPI structure in `/backend` with routers, services, models
-- Supabase: tables (promotions, investors, documents, kyc_data), storage buckets
-- Endpoints: POST /upload-docs, GET /kyc-data/{investor_id}, POST /generate-protocol/{investor_id}
-- CRUD: promotions, investors
+- Supabase: tables (promotions, investors, promotion_investors, documents, kyc_data), storage buckets
+- Investors decoupled from promotions: identity-only investors + promotion_investors join table
+- Endpoints: promotion CRUD, investor CRUD, enrollment CRUD, doc upload/processing, protocol generation
 - Tests with pytest
 
 ### Phase 2: `feature/investor-portal` ✅ COMPLETE (merged to main)
@@ -115,8 +167,17 @@ investor-portal/
 ├── backend/
 │   ├── main.py                  # FastAPI app
 │   ├── routers/                 # endpoints by domain
+│   │   ├── promotions.py        # Promotion CRUD
+│   │   ├── investors.py         # Investor identity CRUD
+│   │   ├── promotion_investors.py # Enrollment CRUD (join table)
+│   │   ├── documents.py         # Document upload/download
+│   │   ├── kyc.py               # KYC extraction + confirmation
+│   │   └── protocol.py          # Protocol generation
 │   ├── services/                # business logic (extraction, protocol)
 │   ├── models/                  # Pydantic schemas
+│   ├── db/
+│   │   ├── init.sql             # current canonical schema (v2)
+│   │   └── init.sql.bak         # pre-decoupling schema backup
 │   ├── db.py                    # Supabase connection
 │   └── requirements.txt
 ├── frontend/

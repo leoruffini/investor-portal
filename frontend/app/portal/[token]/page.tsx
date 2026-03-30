@@ -2,18 +2,18 @@
 
 import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useInvestor } from "@/context/investor-context";
+import { useEnrollment } from "@/context/investor-context";
 
 export default function PortalRedirect() {
-  const { investor, loading, error } = useInvestor();
+  const { enrollment, loading, error } = useEnrollment();
   const router = useRouter();
   const params = useParams<{ token: string }>();
 
   useEffect(() => {
-    if (loading || error || !investor) return;
+    if (loading || error || !enrollment) return;
 
     const base = `/portal/${params.token}`;
-    switch (investor.status) {
+    switch (enrollment.status) {
       case "pending":
         router.replace(`${base}/upload`);
         break;
@@ -27,7 +27,7 @@ export default function PortalRedirect() {
       default:
         router.replace(`${base}/upload`);
     }
-  }, [investor, loading, error, router, params.token]);
+  }, [enrollment, loading, error, router, params.token]);
 
   if (loading) {
     return (

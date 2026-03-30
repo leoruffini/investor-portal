@@ -3,7 +3,7 @@
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createInvestor } from "@/lib/api";
+import { createEnrollment } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,7 @@ export default function NewInvestorPage({
     setLoading(true);
 
     try {
-      await createInvestor({
+      await createEnrollment({
         name,
         email,
         promotion_id: promotionId,
@@ -73,7 +73,7 @@ export default function NewInvestorPage({
       const [invName, invEmail, invAmount] = parts;
 
       try {
-        await createInvestor({
+        await createEnrollment({
           name: invName,
           email: invEmail,
           promotion_id: promotionId,

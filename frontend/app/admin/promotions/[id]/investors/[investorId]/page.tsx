@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, use } from "react";
 import Link from "next/link";
 import {
-  getInvestor,
+  getEnrollment,
   getPromotion,
   getKycData,
   getDocuments,
@@ -13,7 +13,7 @@ import {
   confirmKycData,
   generateProtocol,
 } from "@/lib/api";
-import { Investor, Promotion, KycData, Document } from "@/lib/types";
+import { PromotionInvestor, Promotion, KycData, Document } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
@@ -30,8 +30,9 @@ export default function InvestorDetailPage({
   params: Promise<{ id: string; investorId: string }>;
 }) {
   const { id: promotionId, investorId } = use(params);
+  const enrollmentId = investorId; // URL param holds an enrollment ID
 
-  const [investor, setInvestor] = useState<Investor | null>(null);
+  const [enrollment, setEnrollment] = useState<PromotionInvestor | null>(null);
   const [promotion, setPromotion] = useState<Promotion | null>(null);
   const [kycData, setKycData] = useState<KycData | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -54,14 +55,19 @@ export default function InvestorDetailPage({
 
   const load = async () => {
     try {
-      const [inv, promo, kyc, docs] = await Promise.all([
-        getInvestor(investorId),
+      // Phase 1: enrollment + promotion
+      const [enr, promo] = await Promise.all([
+        getEnrollment(enrollmentId),
         getPromotion(promotionId),
-        getKycData(investorId),
-        getDocuments(investorId),
       ]);
-      setInvestor(inv);
+      setEnrollment(enr);
       setPromotion(promo);
+
+      // Phase 2: KYC + docs (need investor_id from enrollment)
+      const [kyc, docs] = await Promise.all([
+        getKycData(enr.investor_id),
+        getDocuments(enr.investor_id),
+      ]);
       setKycData(kyc);
       setDocuments(docs);
     } catch (err) {
@@ -74,10 +80,10 @@ export default function InvestorDetailPage({
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [investorId]);
+  }, [enrollmentId]);
 
   const handleUpload = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 || !enrollment) return;
     setUploading(true);
     setUploadError("");
 
@@ -103,11 +109,11 @@ export default function InvestorDetailPage({
     };
 
     try {
-      await uploadDocs(investorId, files);
+      await uploadDocs(enrollment.investor_id, enrollment.id, files);
       advanceStep(1, "Extrayendo texto de los PDFs…", 20);
       advanceStep(1, "Extrayendo texto de los PDFs…", 30);
 
-      const result = await pollKycData(investorId);
+      const result = await pollKycData(enrollment.investor_id, enrollment.id);
 
       advanceStep(2, "Analizando documentos con IA…", 75);
       await new Promise((r) => setTimeout(r, 400));
@@ -135,10 +141,11 @@ export default function InvestorDetailPage({
   };
 
   const handleConfirm = async () => {
+    if (!enrollment) return;
     const data = kycFormRef.current?.getData();
     setConfirming(true);
     try {
-      const result = await confirmKycData(investorId, data);
+      const result = await confirmKycData(enrollment.investor_id, enrollment.id, data);
       setKycData(result);
       await load();
     } catch (err) {
@@ -150,13 +157,14 @@ export default function InvestorDetailPage({
   };
 
   const handleGenerateProtocol = async () => {
+    if (!enrollment) return;
     setGenerating(true);
     try {
-      const blob = await generateProtocol(investorId);
+      const blob = await generateProtocol(enrollment.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `protocolo_${investor?.name.replace(/\s+/g, "_")}.docx`;
+      a.download = `protocolo_${enrollment.investor_name.replace(/\s+/g, "_")}.docx`;
       a.click();
       URL.revokeObjectURL(url);
       await load();
@@ -176,7 +184,7 @@ export default function InvestorDetailPage({
     );
   }
 
-  if (!investor) {
+  if (!enrollment) {
     return <p className="text-muted-foreground">Inversor no encontrado.</p>;
   }
 
@@ -196,21 +204,21 @@ export default function InvestorDetailPage({
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">{investor.name}</CardTitle>
-            <StatusBadge status={investor.status} />
+            <CardTitle className="text-xl">{enrollment.investor_name}</CardTitle>
+            <StatusBadge status={enrollment.status} />
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Email</p>
-              <p className="mt-0.5 text-sm text-navy">{investor.email}</p>
+              <p className="mt-0.5 text-sm text-navy">{enrollment.investor_email}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Inversión</p>
               <p className="mt-0.5 text-sm text-navy">
-                {investor.investment_amount
-                  ? investor.investment_amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"
+                {enrollment.investment_amount
+                  ? enrollment.investment_amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €"
                   : "—"}
               </p>
             </div>
@@ -219,11 +227,11 @@ export default function InvestorDetailPage({
               <p className="mt-0.5 text-sm text-navy">
                 {(() => {
                   const s = promotion?.settings;
-                  if (investor.investment_amount && s?.total_investment) {
-                    return (investor.investment_amount / s.total_investment * 100).toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
+                  if (enrollment.investment_amount && s?.total_investment) {
+                    return (enrollment.investment_amount / s.total_investment * 100).toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
                   }
-                  if (investor.ownership_pct != null) {
-                    return investor.ownership_pct.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
+                  if (enrollment.ownership_pct != null) {
+                    return enrollment.ownership_pct.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
                   }
                   return "—";
                 })()}
@@ -234,18 +242,18 @@ export default function InvestorDetailPage({
               <p className="mt-0.5 text-sm text-navy">
                 {(() => {
                   const s = promotion?.settings;
-                  if (investor.investment_amount && s?.total_investment && s?.total_shares) {
-                    return Math.round((investor.investment_amount / s.total_investment) * s.total_shares).toLocaleString("es-ES");
+                  if (enrollment.investment_amount && s?.total_investment && s?.total_shares) {
+                    return Math.round((enrollment.investment_amount / s.total_investment) * s.total_shares).toLocaleString("es-ES");
                   }
                   return "—";
                 })()}
               </p>
             </div>
-            {investor.status !== "complete" && (
+            {enrollment.status !== "complete" && (
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Enlace portal</p>
               <div className="mt-0.5">
-                <CopyLinkButton token={investor.token} />
+                <CopyLinkButton token={enrollment.token} />
               </div>
             </div>
             )}
@@ -278,7 +286,7 @@ export default function InvestorDetailPage({
                     </div>
                   </div>
                   <button
-                    onClick={() => downloadDocument(investorId, doc.id, doc.filename)}
+                    onClick={() => downloadDocument(enrollment.investor_id, doc.id, doc.filename)}
                     className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-teal hover:text-teal"
                   >
                     Descargar
@@ -289,7 +297,7 @@ export default function InvestorDetailPage({
           )}
 
           {/* Upload on behalf */}
-          {(investor.status === "pending" || investor.status === "docs_uploaded" || investor.status === "processing_failed") && (
+          {(enrollment.status === "pending" || enrollment.status === "docs_uploaded" || enrollment.status === "processing_failed") && (
             <div>
               {uploading && processingSteps.length > 0 ? (
                 <ProcessingProgress
@@ -374,13 +382,13 @@ export default function InvestorDetailPage({
       )}
 
       {/* Protocol section */}
-      {(investor.status === "data_confirmed" || investor.status === "complete") && (
+      {(enrollment.status === "data_confirmed" || enrollment.status === "complete") && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Protocolo de inversión</CardTitle>
           </CardHeader>
           <CardContent>
-            {investor.status === "complete" ? (
+            {enrollment.status === "complete" ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-emerald-700">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
