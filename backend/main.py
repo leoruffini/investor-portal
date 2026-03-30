@@ -4,7 +4,7 @@ import os
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import documents, investors, kyc, promotions, protocol
+from routers import documents, investors, kyc, promotion_investors, promotions, protocol
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ async def verify_api_key(request: Request):
 
 app.include_router(promotions.router, dependencies=[Depends(verify_api_key)])
 app.include_router(investors.router, dependencies=[Depends(verify_api_key)])
+app.include_router(promotion_investors.router, dependencies=[Depends(verify_api_key)])
 app.include_router(documents.router, dependencies=[Depends(verify_api_key)])
 app.include_router(kyc.router, dependencies=[Depends(verify_api_key)])
 app.include_router(protocol.router, dependencies=[Depends(verify_api_key)])

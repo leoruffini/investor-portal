@@ -11,15 +11,10 @@ TABLE = "investors"
 
 
 @router.get("/", response_model=list[Investor])
-async def list_investors(
-    promotion_id: str | None = None,
-    token: str | None = None,
-):
+async def list_investors(email: str | None = None):
     query = supabase.table(TABLE).select("*").order("created_at", desc=True)
-    if promotion_id:
-        query = query.eq("promotion_id", promotion_id)
-    if token:
-        query = query.eq("token", token)
+    if email:
+        query = query.eq("email", email)
     result = query.execute()
     return result.data
 

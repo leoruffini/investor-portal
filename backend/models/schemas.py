@@ -66,35 +66,62 @@ class Promotion(PromotionBase):
     model_config = {"from_attributes": True}
 
 
-# --- Investors ---
+# --- Investors (identity only) ---
 
 class InvestorBase(BaseModel):
+    name: str
+    email: EmailStr
+
+
+class InvestorCreate(InvestorBase):
+    pass
+
+
+class InvestorUpdate(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+
+
+class Investor(InvestorBase):
+    id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# --- Promotion–Investor enrollments ---
+
+class PromotionInvestorCreate(BaseModel):
+    promotion_id: str
     name: str
     email: EmailStr
     investment_amount: float | None = None
     ownership_pct: float | None = None
 
 
-class InvestorCreate(InvestorBase):
-    promotion_id: str
-
-
-class InvestorUpdate(BaseModel):
-    name: str | None = None
-    email: EmailStr | None = None
+class PromotionInvestorUpdate(BaseModel):
     investment_amount: float | None = None
     ownership_pct: float | None = None
     status: InvestorStatus | None = None
 
 
-class Investor(InvestorBase):
+class PromotionInvestor(BaseModel):
     id: str
     promotion_id: str
+    investor_id: str
+    investment_amount: float | None = None
+    ownership_pct: float | None = None
     status: InvestorStatus = InvestorStatus.pending
     token: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PromotionInvestorWithInvestor(PromotionInvestor):
+    """Enrollment enriched with investor identity fields."""
+    investor_name: str
+    investor_email: str
 
 
 # --- Documents ---
