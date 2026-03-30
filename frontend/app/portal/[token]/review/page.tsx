@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useInvestor } from "@/context/investor-context";
+import { useEnrollment } from "@/context/investor-context";
 import { StepIndicator } from "@/components/step-indicator";
 import { KycReviewForm, KycReviewFormHandle } from "@/components/kyc-review-form";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { confirmKycData } from "@/lib/api";
 
 export default function ReviewPage() {
-  const { investor, kycData, loading, error: ctxError, refresh } = useInvestor();
+  const { enrollment, kycData, loading, error: ctxError, refresh } = useEnrollment();
   const router = useRouter();
   const params = useParams<{ token: string }>();
   const formRef = useRef<KycReviewFormHandle>(null);
@@ -25,7 +25,7 @@ export default function ReviewPage() {
     );
   }
 
-  if (ctxError || !investor) {
+  if (ctxError || !enrollment) {
     return (
       <div className="py-20 text-center">
         <p className="text-destructive">{ctxError || "Inversor no encontrado"}</p>
@@ -59,7 +59,7 @@ export default function ReviewPage() {
       setConfirming(true);
       setError(null);
       const editedData = formRef.current?.getData() ?? kycData.extracted_json;
-      await confirmKycData(investor.id, editedData as Record<string, unknown>);
+      await confirmKycData(enrollment.investor_id, enrollment.id, editedData as Record<string, unknown>);
       await refresh();
       router.push(`/portal/${params.token}/complete`);
     } catch (err) {

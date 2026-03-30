@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   getPromotion,
-  getInvestorsByPromotion,
-  deleteInvestor,
+  getEnrollmentsByPromotion,
+  deleteEnrollment,
   generateProtocol,
 } from "@/lib/api";
-import { Promotion, Investor, PromotionSettings } from "@/lib/types";
+import { Promotion, PromotionInvestor, PromotionSettings } from "@/lib/types";
 import { updatePromotion } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,8 +44,8 @@ export default function PromotionDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const [promotion, setPromotion] = useState<Promotion | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Investor | null>(null);
-  const [investors, setInvestors] = useState<Investor[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<PromotionInvestor | null>(null);
+  const [investors, setInvestors] = useState<PromotionInvestor[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -62,7 +62,7 @@ export default function PromotionDetailPage({
     try {
       const [promo, invs] = await Promise.all([
         getPromotion(id),
-        getInvestorsByPromotion(id),
+        getEnrollmentsByPromotion(id),
       ]);
       setPromotion(promo);
       setInvestors(invs);
@@ -84,7 +84,7 @@ export default function PromotionDetailPage({
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     try {
-      await deleteInvestor(deleteTarget.id);
+      await deleteEnrollment(deleteTarget.id);
       setInvestors((prev) => prev.filter((i) => i.id !== deleteTarget.id));
     } catch (err) {
       console.error("Error deleting investor:", err);
@@ -103,7 +103,7 @@ export default function PromotionDetailPage({
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `protocolo_${inv.name.replace(/\s+/g, "_")}.docx`;
+        a.download = `protocolo_${inv.investor_name.replace(/\s+/g, "_")}.docx`;
         a.click();
         URL.revokeObjectURL(url);
       }
@@ -143,12 +143,12 @@ export default function PromotionDetailPage({
     settings.second_disbursement_pct != null &&
     Math.abs(settings.first_disbursement_pct + settings.second_disbursement_pct - 100) > 0.01;
 
-  const calcOwnership = (inv: Investor) => {
+  const calcOwnership = (inv: PromotionInvestor) => {
     if (!inv.investment_amount || !settings.total_investment) return null;
     return (inv.investment_amount / settings.total_investment) * 100;
   };
 
-  const calcShares = (inv: Investor) => {
+  const calcShares = (inv: PromotionInvestor) => {
     if (!inv.investment_amount || !settings.total_investment || !settings.total_shares) return null;
     return Math.round((inv.investment_amount / settings.total_investment) * settings.total_shares);
   };
@@ -409,11 +409,11 @@ export default function PromotionDetailPage({
                         onClick={(e) => e.stopPropagation()}
                         className="text-navy hover:text-teal transition-colors"
                       >
-                        {inv.name}
+                        {inv.investor_name}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {inv.email}
+                      {inv.investor_email}
                     </td>
                     <td className="px-4 py-3 text-right text-navy whitespace-nowrap">
                       {inv.investment_amount
@@ -469,7 +469,7 @@ export default function PromotionDetailPage({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar inversor?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará a <span className="font-medium text-navy">{deleteTarget?.name}</span> y todos sus documentos y datos asociados. Esta acción no se puede deshacer.
+              Se eliminará a <span className="font-medium text-navy">{deleteTarget?.investor_name}</span> y todos sus documentos y datos asociados. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

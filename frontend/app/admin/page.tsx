@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getPromotions, getInvestorsByPromotion } from "@/lib/api";
-import { Promotion, Investor } from "@/lib/types";
+import { getPromotions, getEnrollmentsByPromotion } from "@/lib/api";
+import { Promotion, PromotionInvestor } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -32,8 +32,8 @@ export default function AdminDashboardPage() {
         const promos = await getPromotions();
         const withStats = await Promise.all(
           promos.map(async (p) => {
-            const investors = await getInvestorsByPromotion(p.id);
-            const completeCount = investors.filter((i: Investor) => i.status === "complete").length;
+            const investors = await getEnrollmentsByPromotion(p.id);
+            const completeCount = investors.filter((i: PromotionInvestor) => i.status === "complete").length;
             return {
               ...p,
               investorCount: investors.length,

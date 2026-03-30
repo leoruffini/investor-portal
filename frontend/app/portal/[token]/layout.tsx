@@ -1,4 +1,4 @@
-import { InvestorProvider } from "@/context/investor-context";
+import { EnrollmentProvider } from "@/context/investor-context";
 import { ProvalixLogo } from "@/components/provalix-logo";
 
 export default async function PortalLayout({
@@ -11,7 +11,7 @@ export default async function PortalLayout({
   const { token } = await params;
 
   return (
-    <InvestorProvider token={token}>
+    <EnrollmentProvider token={token}>
       <div className="flex min-h-screen flex-col">
         {/* Navy gradient header bar */}
         <header
@@ -61,6 +61,6 @@ export default async function PortalLayout({
           © {new Date().getFullYear()} Provalix — Portal del Inversor
         </footer>
       </div>
-    </InvestorProvider>
+    </EnrollmentProvider>
   );
 }

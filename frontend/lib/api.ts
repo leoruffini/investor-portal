@@ -1,4 +1,4 @@
-import { Investor, Promotion, PromotionSettings, KycData, Document } from "./types";
+import { Investor, PromotionInvestor, Promotion, PromotionSettings, KycData, Document } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -16,19 +16,19 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export async function getInvestorByToken(token: string): Promise<Investor | null> {
-  const investors = await apiFetch<Investor[]>(`/investors/?token=${token}`);
-  return investors.length > 0 ? investors[0] : null;
+export async function getEnrollmentByToken(token: string): Promise<PromotionInvestor | null> {
+  const enrollments = await apiFetch<PromotionInvestor[]>(`/promotion-investors/?token=${token}`);
+  return enrollments.length > 0 ? enrollments[0] : null;
 }
 
-export async function getInvestor(investorId: string): Promise<Investor> {
-  return apiFetch<Investor>(`/investors/${investorId}`);
+export async function getEnrollment(enrollmentId: string): Promise<PromotionInvestor> {
+  return apiFetch<PromotionInvestor>(`/promotion-investors/${enrollmentId}`);
 }
 
-export async function uploadDocs(investorId: string, files: File[]): Promise<{ status: string }> {
+export async function uploadDocs(investorId: string, enrollmentId: string, files: File[]): Promise<{ status: string }> {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
-  return apiFetch<{ status: string }>(`/kyc/upload-docs/${investorId}`, {
+  return apiFetch<{ status: string }>(`/kyc/upload-docs/${investorId}?enrollment_id=${enrollmentId}`, {
     method: "POST",
     body: formData,
   });
@@ -36,6 +36,7 @@ export async function uploadDocs(investorId: string, files: File[]): Promise<{ s
 
 export async function pollKycData(
   investorId: string,
+  enrollmentId: string,
   { intervalMs = 3000, maxAttempts = 120 } = {}
 ): Promise<KycData> {
   for (let i = 0; i < maxAttempts; i++) {
@@ -44,13 +45,13 @@ export async function pollKycData(
 
     // Check if processing failed so we can stop early
     try {
-      const investor = await apiFetch<Investor>(`/investors/${investorId}`);
-      if (investor.status === "processing_failed") {
+      const enrollment = await apiFetch<PromotionInvestor>(`/promotion-investors/${enrollmentId}`);
+      if (enrollment.status === "processing_failed") {
         throw new Error("Error al procesar los documentos. Por favor, inténtelo de nuevo o contacte con soporte.");
       }
     } catch (err) {
       if (err instanceof Error && err.message.includes("Error al procesar")) throw err;
-      // If investor fetch fails, continue polling
+      // If enrollment fetch fails, continue polling
     }
 
     await new Promise((r) => setTimeout(r, intervalMs));
@@ -68,9 +69,10 @@ export async function getKycData(investorId: string): Promise<KycData | null> {
 
 export async function confirmKycData(
   investorId: string,
+  enrollmentId: string,
   extractedJson?: Record<string, unknown>
 ): Promise<KycData> {
-  return apiFetch<KycData>(`/kyc/kyc-data/${investorId}/confirm`, {
+  return apiFetch<KycData>(`/kyc/kyc-data/${investorId}/confirm?enrollment_id=${enrollmentId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(extractedJson ?? null),
@@ -129,32 +131,32 @@ export async function updatePromotion(
   });
 }
 
-// --- Investors (admin) ---
+// --- Enrollments (admin) ---
 
-export async function getInvestorsByPromotion(
+export async function getEnrollmentsByPromotion(
   promotionId: string
-): Promise<Investor[]> {
-  return apiFetch<Investor[]>(`/investors/?promotion_id=${promotionId}`);
+): Promise<PromotionInvestor[]> {
+  return apiFetch<PromotionInvestor[]>(`/promotion-investors/?promotion_id=${promotionId}`);
 }
 
-export async function createInvestor(data: {
+export async function createEnrollment(data: {
   name: string;
   email: string;
   promotion_id: string;
   investment_amount?: number;
   ownership_pct?: number;
-}): Promise<Investor> {
-  return apiFetch<Investor>("/investors/", {
+}): Promise<PromotionInvestor> {
+  return apiFetch<PromotionInvestor>("/promotion-investors/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteInvestor(investorId: string): Promise<void> {
+export async function deleteEnrollment(enrollmentId: string): Promise<void> {
   const headers: HeadersInit = {};
   if (API_KEY) headers["X-API-Key"] = API_KEY;
-  const res = await fetch(`${API_BASE}/investors/${investorId}`, { method: "DELETE", headers });
+  const res = await fetch(`${API_BASE}/promotion-investors/${enrollmentId}`, { method: "DELETE", headers });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`API error ${res.status}: ${body}`);
@@ -163,11 +165,11 @@ export async function deleteInvestor(investorId: string): Promise<void> {
 
 // --- Protocol ---
 
-export async function generateProtocol(investorId: string): Promise<Blob> {
+export async function generateProtocol(enrollmentId: string): Promise<Blob> {
   const headers: HeadersInit = {};
   if (API_KEY) headers["X-API-Key"] = API_KEY;
   const res = await fetch(
-    `${API_BASE}/protocol/generate/${investorId}`,
+    `${API_BASE}/protocol/generate/${enrollmentId}`,
     { method: "POST", headers }
   );
   if (!res.ok) {

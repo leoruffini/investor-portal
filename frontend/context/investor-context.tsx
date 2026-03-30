@@ -1,37 +1,37 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { Investor, KycData } from "@/lib/types";
-import { getInvestorByToken, getKycData, getInvestor } from "@/lib/api";
+import { PromotionInvestor, KycData } from "@/lib/types";
+import { getEnrollmentByToken, getKycData, getEnrollment } from "@/lib/api";
 
-interface InvestorContextValue {
-  investor: Investor | null;
+interface EnrollmentContextValue {
+  enrollment: PromotionInvestor | null;
   kycData: KycData | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
 }
 
-const InvestorContext = createContext<InvestorContextValue>({
-  investor: null,
+const EnrollmentContext = createContext<EnrollmentContextValue>({
+  enrollment: null,
   kycData: null,
   loading: true,
   error: null,
   refresh: async () => {},
 });
 
-export function useInvestor() {
-  return useContext(InvestorContext);
+export function useEnrollment() {
+  return useContext(EnrollmentContext);
 }
 
-export function InvestorProvider({
+export function EnrollmentProvider({
   token,
   children,
 }: {
   token: string;
   children: React.ReactNode;
 }) {
-  const [investor, setInvestor] = useState<Investor | null>(null);
+  const [enrollment, setEnrollment] = useState<PromotionInvestor | null>(null);
   const [kycData, setKycData] = useState<KycData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,27 +41,27 @@ export function InvestorProvider({
       setLoading(true);
       setError(null);
 
-      let inv = investor;
-      if (!inv) {
-        inv = await getInvestorByToken(token);
-        if (!inv) {
+      let enr = enrollment;
+      if (!enr) {
+        enr = await getEnrollmentByToken(token);
+        if (!enr) {
           setError("Enlace no válido. Contacte con Provalix.");
           return;
         }
-        setInvestor(inv);
+        setEnrollment(enr);
       } else {
-        inv = await getInvestor(inv.id);
-        setInvestor(inv);
+        enr = await getEnrollment(enr.id);
+        setEnrollment(enr);
       }
 
-      const kyc = await getKycData(inv.id);
+      const kyc = await getKycData(enr.investor_id);
       setKycData(kyc);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de conexión");
     } finally {
       setLoading(false);
     }
-  }, [token, investor]);
+  }, [token, enrollment]);
 
   useEffect(() => {
     refresh();
@@ -69,8 +69,8 @@ export function InvestorProvider({
   }, [token]);
 
   return (
-    <InvestorContext.Provider value={{ investor, kycData, loading, error, refresh }}>
+    <EnrollmentContext.Provider value={{ enrollment, kycData, loading, error, refresh }}>
       {children}
-    </InvestorContext.Provider>
+    </EnrollmentContext.Provider>
   );
 }
