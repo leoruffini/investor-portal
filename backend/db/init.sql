@@ -8,6 +8,7 @@ create table promotions (
   settings    jsonb,
   created_at  timestamptz not null default now()
 );
+alter table promotions enable row level security;
 
 create table investors (
   id          uuid primary key default gen_random_uuid(),
@@ -16,6 +17,7 @@ create table investors (
   cif         text not null unique,
   created_at  timestamptz not null default now()
 );
+alter table investors enable row level security;
 
 create table promotion_investors (
   id                uuid primary key default gen_random_uuid(),
@@ -30,6 +32,7 @@ create table promotion_investors (
   created_at        timestamptz not null default now(),
   unique (promotion_id, investor_id)
 );
+alter table promotion_investors enable row level security;
 
 create table documents (
   id            uuid primary key default gen_random_uuid(),
@@ -40,6 +43,7 @@ create table documents (
                 check (doc_type in ('escritura_constitucion', 'nombramiento', 'poderes', 'otro')),
   uploaded_at   timestamptz not null default now()
 );
+alter table documents enable row level security;
 
 create table kyc_data (
   id              uuid primary key default gen_random_uuid(),
@@ -48,3 +52,4 @@ create table kyc_data (
   confirmed       boolean not null default false,
   confirmed_at    timestamptz
 );
+alter table kyc_data enable row level security;
