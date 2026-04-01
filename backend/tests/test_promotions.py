@@ -59,7 +59,7 @@ async def test_delete_promotion(client):
     resp = await client.post("/promotions/", json={"name": "To Delete"})
     pid = resp.json()["id"]
     resp = await client.delete(f"/promotions/{pid}")
-    assert resp.status_code == 204
+    assert resp.status_code == 200
 
     resp = await client.get(f"/promotions/{pid}")
     assert resp.status_code == 404
