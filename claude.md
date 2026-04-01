@@ -112,9 +112,9 @@ kyc_data  (linked to investor identity, reusable)
 - `DELETE /{id}` — delete
 
 **Promotion-Investors** (`/promotion-investors`) — enrollments
-- `GET /` — list (`?promotion_id=` or `?token=`), returns enriched with investor name/email
+- `GET /` — list (`?promotion_id=` or `?token=`), returns enriched with investor name/email/cif
 - `GET /{id}` — get one (enriched)
-- `POST /` — create enrollment (find-or-create investor by email). 409 on duplicate.
+- `POST /` — create enrollment (find-or-create investor by CIF). 409 on duplicate.
 - `PATCH /{id}` — update (investment_amount, ownership_pct, status)
 - `DELETE /{id}` — delete
 
