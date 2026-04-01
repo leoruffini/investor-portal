@@ -211,6 +211,10 @@ export default function InvestorDetailPage({
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">CIF</p>
+              <p className="mt-0.5 text-sm text-navy font-mono">{enrollment.investor_cif}</p>
+            </div>
+            <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Email</p>
               <p className="mt-0.5 text-sm text-navy">{enrollment.investor_email}</p>
             </div>

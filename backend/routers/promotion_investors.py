@@ -19,19 +19,20 @@ TABLE = "promotion_investors"
 
 
 def _flatten_investor(row: dict) -> dict:
-    """Move nested investors{name, email} to top-level investor_name/investor_email."""
+    """Move nested investors{name, email, cif} to top-level fields."""
     investor = row.pop("investors", None) or {}
     row["investor_name"] = investor.get("name", "")
     row["investor_email"] = investor.get("email", "")
+    row["investor_cif"] = investor.get("cif", "")
     return row
 
 
-def _find_or_create_investor(name: str, email: str) -> str:
-    """Find an investor by email or create a new one. Returns investor id."""
+def _find_or_create_investor(name: str, email: str, cif: str) -> str:
+    """Find an investor by CIF or create a new one. Returns investor id."""
     existing = (
         supabase.table("investors")
         .select("id")
-        .eq("email", email)
+        .eq("cif", cif)
         .execute()
     )
     if existing.data:
@@ -39,7 +40,7 @@ def _find_or_create_investor(name: str, email: str) -> str:
 
     result = (
         supabase.table("investors")
-        .insert({"name": name, "email": email})
+        .insert({"name": name, "email": email, "cif": cif})
         .execute()
     )
     return result.data[0]["id"]
@@ -55,7 +56,7 @@ async def list_enrollments(
 
     query = (
         supabase.table(TABLE)
-        .select("*, investors(name, email)")
+        .select("*, investors(name, email, cif)")
         .order("created_at", desc=True)
     )
     if promotion_id:
@@ -71,7 +72,7 @@ async def list_enrollments(
 async def get_enrollment(enrollment_id: UUID):
     result = (
         supabase.table(TABLE)
-        .select("*, investors(name, email)")
+        .select("*, investors(name, email, cif)")
         .eq("id", str(enrollment_id))
         .execute()
     )
@@ -92,8 +93,8 @@ async def create_enrollment(payload: PromotionInvestorCreate):
     if not promo.data:
         raise HTTPException(status_code=404, detail="Promoción no encontrada")
 
-    # Find or create investor by email
-    investor_id = _find_or_create_investor(payload.name, payload.email)
+    # Find or create investor by CIF
+    investor_id = _find_or_create_investor(payload.name, payload.email, payload.cif)
 
     # Create enrollment
     enrollment_data = {

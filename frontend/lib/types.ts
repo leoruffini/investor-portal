@@ -21,6 +21,7 @@ export interface Investor {
   id: string;
   name: string;
   email: string;
+  cif: string;
   created_at: string;
 }
 
@@ -35,6 +36,7 @@ export interface PromotionInvestor {
   created_at: string;
   investor_name: string;
   investor_email: string;
+  investor_cif: string;
 }
 
 export interface Document {
