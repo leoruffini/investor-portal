@@ -46,8 +46,9 @@ async def update_promotion(promotion_id: UUID, payload: PromotionUpdate):
     return result.data[0]
 
 
-@router.delete("/{promotion_id}", status_code=204)
+@router.delete("/{promotion_id}")
 async def delete_promotion(promotion_id: UUID):
     result = supabase.table(TABLE).delete().eq("id", str(promotion_id)).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Promoción no encontrada")
+    return {"status": "deleted"}
