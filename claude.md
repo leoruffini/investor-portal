@@ -59,7 +59,7 @@ promotions
   - id, name, description, settings (JSONB), created_at
 
 investors  (identity only — reusable across promotions)
-  - id, name, email (UNIQUE), created_at
+  - id, name, email, cif (UNIQUE — Spanish corporate tax ID), created_at
 
 promotion_investors  (per-promotion enrollment)
   - id, promotion_id (FK → promotions, CASCADE), investor_id (FK → investors, CASCADE),
@@ -77,15 +77,15 @@ kyc_data  (linked to investor identity, reusable)
 ```
 
 ### Key schema decisions
-- **Investors are identity-only**: name + email. No promotion-specific data.
+- **Investors are identity-only**: name + email + CIF. No promotion-specific data.
 - **promotion_investors** is the join/enrollment table holding per-promotion data (amount, %, status, token).
 - **documents and kyc_data** stay linked to `investors.id` — they belong to the investor identity and are reusable across promotions.
 - **Portal token** lives on `promotion_investors`, not `investors`.
-- **POST /promotion-investors/** does find-or-create by email: if an investor with that email already exists, reuses the identity; otherwise creates a new investor record.
+- **POST /promotion-investors/** does find-or-create by CIF: if an investor with that CIF already exists, reuses the identity; otherwise creates a new investor record. Email is no longer unique — multiple companies can share the same contact email.
 
 ## Full flow
 
-1. **Provalix** creates a promotion and enrolls investors via POST /promotion-investors/ (name, email, amount, %)
+1. **Provalix** creates a promotion and enrolls investors via POST /promotion-investors/ (name, CIF, email, amount, %)
 2. System generates a unique portal link per enrollment (token on `promotion_investors`)
 3. **First promotion**: Provalix uploads docs on behalf of investors (testing, avoids GDPR issues)
 4. **Subsequent promotions**: each investor enters via their link (`/portal/{token}`) and uploads their own docs
@@ -105,10 +105,10 @@ kyc_data  (linked to investor identity, reusable)
 - `DELETE /{id}` — delete
 
 **Investors** (`/investors`) — identity only
-- `GET /` — list (optional `?email=`)
+- `GET /` — list (optional `?email=`, `?cif=`)
 - `GET /{id}` — get one
-- `POST /` — create (name, email)
-- `PATCH /{id}` — update (name, email)
+- `POST /` — create (name, email, cif)
+- `PATCH /{id}` — update (name, email, cif)
 - `DELETE /{id}` — delete
 
 **Promotion-Investors** (`/promotion-investors`) — enrollments

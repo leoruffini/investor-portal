@@ -377,6 +377,9 @@ export default function PromotionDetailPage({
                     Nombre
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    CIF
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
                     Email
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -411,6 +414,9 @@ export default function PromotionDetailPage({
                       >
                         {inv.investor_name}
                       </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                      {inv.investor_cif}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {inv.investor_email}

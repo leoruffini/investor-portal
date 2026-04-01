@@ -63,6 +63,7 @@ async def investor(client: AsyncClient):
     resp = await client.post("/investors/", json={
         "name": "Test Investor S.L.",
         "email": "test-fixture@example.com",
+        "cif": "B99999999",
     })
     data = resp.json()
     yield data
@@ -76,6 +77,7 @@ async def enrollment(client: AsyncClient, promotion: dict):
         "promotion_id": promotion["id"],
         "name": "Enrolled Investor S.L.",
         "email": "test-enrollment@example.com",
+        "cif": "B88888888",
         "investment_amount": 240000,
         "ownership_pct": 10.0,
     })

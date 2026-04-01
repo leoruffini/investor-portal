@@ -9,6 +9,7 @@ async def test_create_enrollment(client, promotion):
         "promotion_id": promotion["id"],
         "name": "New Enrolled S.L.",
         "email": "new-enrolled@example.com",
+        "cif": "B11111111",
         "investment_amount": 100000,
         "ownership_pct": 5.0,
     })
@@ -27,11 +28,12 @@ async def test_create_enrollment(client, promotion):
 @requires_tables
 @pytest.mark.anyio
 async def test_create_enrollment_reuses_existing_investor(client, promotion, investor):
-    """If an investor with the same email already exists, reuse their identity."""
+    """If an investor with the same CIF already exists, reuse their identity."""
     resp = await client.post("/promotion-investors/", json={
         "promotion_id": promotion["id"],
         "name": investor["name"],
         "email": investor["email"],
+        "cif": investor["cif"],
         "investment_amount": 50000,
     })
     assert resp.status_code == 201
@@ -42,11 +44,12 @@ async def test_create_enrollment_reuses_existing_investor(client, promotion, inv
 @requires_tables
 @pytest.mark.anyio
 async def test_create_enrollment_duplicate_409(client, promotion, enrollment):
-    """Same investor + same promotion should return 409."""
+    """Same investor (by CIF) + same promotion should return 409."""
     resp = await client.post("/promotion-investors/", json={
         "promotion_id": promotion["id"],
         "name": "Enrolled Investor S.L.",
         "email": "test-enrollment@example.com",
+        "cif": "B88888888",
     })
     assert resp.status_code == 409
 
@@ -61,6 +64,7 @@ async def test_list_enrollments_by_promotion(client, promotion, enrollment):
     # Should include enriched investor fields
     assert results[0]["investor_name"] == "Enrolled Investor S.L."
     assert results[0]["investor_email"] == "test-enrollment@example.com"
+    assert results[0]["investor_cif"] == "B88888888"
 
 
 @requires_tables
@@ -101,6 +105,7 @@ async def test_delete_enrollment(client, promotion):
         "promotion_id": promotion["id"],
         "name": "To Delete S.L.",
         "email": "to-delete@example.com",
+        "cif": "B77777777",
     })
     enr = resp.json()
 
@@ -114,6 +119,36 @@ async def test_delete_enrollment(client, promotion):
 
     # Cleanup investor
     await client.delete(f"/investors/{enr['investor_id']}")
+
+
+@requires_tables
+@pytest.mark.anyio
+async def test_create_enrollment_same_email_different_cif(client, promotion):
+    """Two companies with same contact email but different CIFs are separate investors."""
+    resp1 = await client.post("/promotion-investors/", json={
+        "promotion_id": promotion["id"],
+        "name": "Company A S.L.",
+        "email": "shared@example.com",
+        "cif": "B11110001",
+        "investment_amount": 100000,
+    })
+    assert resp1.status_code == 201
+
+    resp2 = await client.post("/promotion-investors/", json={
+        "promotion_id": promotion["id"],
+        "name": "Company B S.L.",
+        "email": "shared@example.com",
+        "cif": "B11110002",
+        "investment_amount": 200000,
+    })
+    assert resp2.status_code == 201
+
+    # Different investor IDs despite same email
+    assert resp1.json()["investor_id"] != resp2.json()["investor_id"]
+
+    # Cleanup
+    await client.delete(f"/investors/{resp1.json()['investor_id']}")
+    await client.delete(f"/investors/{resp2.json()['investor_id']}")
 
 
 @requires_tables

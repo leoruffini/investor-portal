@@ -142,6 +142,7 @@ export async function getEnrollmentsByPromotion(
 export async function createEnrollment(data: {
   name: string;
   email: string;
+  cif: string;
   promotion_id: string;
   investment_amount?: number;
   ownership_pct?: number;

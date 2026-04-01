@@ -2,7 +2,14 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, EmailStr, model_validator
+import re
+
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
+
+
+def _normalize_cif(v: str) -> str:
+    """Strip spaces, hyphens, dots and uppercase so B-1234-5678 == B12345678."""
+    return re.sub(r"[\s\-.]", "", v).upper()
 
 
 # --- Enums ---
@@ -71,6 +78,12 @@ class Promotion(PromotionBase):
 class InvestorBase(BaseModel):
     name: str
     email: EmailStr
+    cif: str
+
+    @field_validator("cif")
+    @classmethod
+    def normalize_cif(cls, v: str) -> str:
+        return _normalize_cif(v)
 
 
 class InvestorCreate(InvestorBase):
@@ -80,6 +93,12 @@ class InvestorCreate(InvestorBase):
 class InvestorUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
+    cif: str | None = None
+
+    @field_validator("cif")
+    @classmethod
+    def normalize_cif(cls, v: str | None) -> str | None:
+        return _normalize_cif(v) if v is not None else None
 
 
 class Investor(InvestorBase):
@@ -95,8 +114,14 @@ class PromotionInvestorCreate(BaseModel):
     promotion_id: str
     name: str
     email: EmailStr
+    cif: str
     investment_amount: float | None = None
     ownership_pct: float | None = None
+
+    @field_validator("cif")
+    @classmethod
+    def normalize_cif(cls, v: str) -> str:
+        return _normalize_cif(v)
 
 
 class PromotionInvestorUpdate(BaseModel):
@@ -122,6 +147,7 @@ class PromotionInvestorWithInvestor(PromotionInvestor):
     """Enrollment enriched with investor identity fields."""
     investor_name: str
     investor_email: str
+    investor_cif: str
 
 
 # --- Documents ---

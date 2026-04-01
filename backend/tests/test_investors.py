@@ -8,11 +8,13 @@ async def test_create_investor(client):
     resp = await client.post("/investors/", json={
         "name": "VENTU EUROPE S.L.",
         "email": "ventu-test@example.com",
+        "cif": "B12345678",
     })
     assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "VENTU EUROPE S.L."
     assert data["email"] == "ventu-test@example.com"
+    assert data["cif"] == "B12345678"
     assert "id" in data
     # identity-only: no status, token, or promotion_id
     assert "status" not in data

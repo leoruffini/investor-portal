@@ -21,6 +21,7 @@ export default function NewInvestorPage({
 
   // Individual form
   const [name, setName] = useState("");
+  const [cif, setCif] = useState("");
   const [email, setEmail] = useState("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,6 +41,7 @@ export default function NewInvestorPage({
       await createEnrollment({
         name,
         email,
+        cif,
         promotion_id: promotionId,
         investment_amount: amount ? parseFloat(amount) : undefined,
       });
@@ -65,17 +67,18 @@ export default function NewInvestorPage({
 
     for (const line of lines) {
       const parts = line.split(/[;,\t]/).map((p) => p.trim());
-      if (parts.length < 2) {
+      if (parts.length < 3) {
         errors.push(`Línea inválida (faltan campos): "${line}"`);
         continue;
       }
 
-      const [invName, invEmail, invAmount] = parts;
+      const [invName, invCif, invEmail, invAmount] = parts;
 
       try {
         await createEnrollment({
           name: invName,
           email: invEmail,
+          cif: invCif,
           promotion_id: promotionId,
           investment_amount: invAmount ? parseFloat(invAmount) : undefined,
         });
@@ -127,6 +130,20 @@ export default function NewInvestorPage({
                     />
                   </div>
                   <div>
+                    <Label htmlFor="cif">CIF *</Label>
+                    <Input
+                      id="cif"
+                      value={cif}
+                      onChange={(e) => setCif(e.target.value)}
+                      placeholder="B12345678"
+                      className="mt-1 font-mono"
+                      required
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Espacios, guiones y mayúsculas se normalizan automáticamente.
+                    </p>
+                  </div>
+                  <div>
                     <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
@@ -157,7 +174,7 @@ export default function NewInvestorPage({
                 <div className="flex gap-3">
                   <Button
                     type="submit"
-                    disabled={loading || !name.trim() || !email.trim()}
+                    disabled={loading || !name.trim() || !cif.trim() || !email.trim()}
                     className="bg-navy hover:bg-navy/90"
                   >
                     {loading ? "Creando..." : "Añadir inversor"}
@@ -180,14 +197,14 @@ export default function NewInvestorPage({
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Formato: <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">nombre, email, importe</code>
+                Formato: <code className="rounded bg-gray-100 px-1 py-0.5 text-xs">nombre, CIF, email, importe</code>
                 <br />
                 Separador: coma, punto y coma, o tabulador. Una línea por inversor.
               </p>
               <Textarea
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
-                placeholder={`Inversiones Levante S.L., admin@levante.com, 500000\nGrupo Mediterráneo S.A., info@grupomed.com, 300000`}
+                placeholder={`Inversiones Levante S.L., B12345678, admin@levante.com, 500000\nGrupo Mediterráneo S.A., A87654321, info@grupomed.com, 300000`}
                 rows={8}
                 className="font-mono text-sm"
               />
